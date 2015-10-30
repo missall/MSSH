@@ -4,19 +4,19 @@ Mssh是一个基于maven、struts、spring、hibernate框架的脚手架生产�
 ##用法
 1. mssh需要依赖ruby环境，请先安装ruby
     
-    brew install ruby
+    `brew install ruby`
 
 2. 创建一个项目
     
-    mssh create myproject
+    `mssh create myproject`
 
 3. 根据生成的ORM映射文件生成MODEL的各层代码
     
-    mssh create all modelName
+    `mssh create all modelName`
 
 4. 启动项目
     
-    maven jetty:run
+    `maven jetty:run`
 
 5. 使用浏览器访问 `http://localhost:8080/myproject`
 
