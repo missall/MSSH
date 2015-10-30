@@ -1,0 +1,58 @@
+package cn.<%=@@projectName%>.exception;
+
+public class UnHandledException extends Exception {
+
+    /**
+     * serialVersionUID
+     */
+    private static final long serialVersionUID = 1L;
+
+    private String key = null;
+
+    private String[] args = null;
+
+    public UnHandledException() {
+        super();
+    }
+
+    public UnHandledException(String key) {
+        super();
+        this.key = key;
+    }
+
+    public UnHandledException(String key, String[] args) {
+        super();
+        this.key = key;
+        this.args = args;
+    }
+
+    /**
+     * @return Returns the args.
+     */
+    public String[] getArgs() {
+        return this.args;
+    }
+
+    /**
+     * @param args
+     *            The args to set.
+     */
+    public void setArgs(String[] args) {
+        this.args = args;
+    }
+
+    /**
+     * @return Returns the key.
+     */
+    public String getKey() {
+        return this.key;
+    }
+
+    /**
+     * @param key
+     *            The key to set.
+     */
+    public void setKey(String key) {
+        this.key = key;
+    }
+}

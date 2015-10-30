@@ -1,0 +1,52 @@
+$(document).ready(function() {
+    if($('#pagin').length>0){
+        initPage();
+    }
+});
+
+function initPage(){
+     //每个分页页面需要实现loadPage(pageNum)函数来加载数据,返回pf分页对象
+     var firstPageNum = 1;
+     var totalPages = loadPage(firstPageNum);
+     if( totalPages == 0 ){
+         $('#pagin').html(' ');
+         return;
+     }
+     options = {
+            bootstrapMajorVersion:3,
+            currentPage: firstPageNum,
+            totalPages: totalPages,
+            numberofPages:5,
+            itemContainerClass: function (type, page, current) {
+                if ((page == current) && (type == 'page')) {
+                    return "page-active";
+                } else if ((firstPageNum == current) && ((type == 'first') || (type == 'prev')) 
+                        || ((totalPages == current) && ((type == 'next') || (type == 'last')))) {
+                    return "page-disable";
+                } else {
+                    return "pointer-cursor";
+                }      
+            },
+            onPageClicked: function(e,originalEvent,type,page){
+                options.numberofPages = loadPage(page);
+                options.currentPage = $('.page-active>a').text();
+                $('#pagin').bootstrapPaginator(options);
+            },
+            shouldShowPage:true,
+            itemTexts: function (type, page, current) {
+                switch (type) {
+                case "first":
+                    return "首页";
+                case "prev":
+                    return "上一页";
+                case "next":
+                    return "下一页";
+                case "last":
+                    return "尾页";
+                case "page":
+                    return page;
+                }
+            }
+        }
+        $('#pagin').bootstrapPaginator(options);
+}

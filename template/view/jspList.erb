@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+</head>
+<body>
+<!-- 头部导航信息 -->
+<div class="header">
+  <jsp:include page="/WEB-INF/jsp/layout/header.jsp" />
+</div>
+<div class="body">
+  <div class="current-location">
+    <ul>
+      <li>系统管理 > </li>
+      <li><%=@@bean.table_name%>管理</li>
+    </ul>
+  </div>
+  <!-- 提示信息  -->
+  <div class="alert alert-success"></div>
+  <div class="container">
+    <!-- main主界面  -->
+    <div class="main">
+      <div class="main-title">
+        <span><%=@@bean.table_name%>管理</span>
+      </div>
+      <!-- 查询功能  -->
+      <div class="main-search">
+        <% @@bean.columns.each do |p|%><div class="form-group">   
+          <span class="col-md-2 control-label"><%=p.first%></span>
+          <div class="col-md-3">
+            <input type="text" class="form-control input-sm">
+          </div>
+        </div>
+        <%end%> 
+        <button type="button" class="btn btn-success btn-sm">筛选</button>
+      </div>
+      <!-- 批量删除/新增操作信息  -->
+      <div class="main-operating">
+        <button type="button" class="btn btn-danger btn-sm" disabled="disabled">批量删除</button>
+        <div class="add-btn">
+          <button type="button" onclick="location='/<%=@@projectName%>/<%=@@bean.table_name%>/new'">新增</button>
+        </div>
+      </div>
+      <!-- 数据信息展现列表  -->
+      <table class="table">
+        <thead>
+          <tr>
+            <th><input type="checkbox" style="width: 30px;"></th><% @@bean.columns.each do |p|%>    
+              <th><%=p.first%></th><%end%> 
+            <th>编辑</th>
+          </tr>
+        </thead>
+        <s:iterator id="<%=@@bean.table_name%>" value="pf.items">
+          <tr>
+            <td><input class="info-type" name="check-info" type="checkbox"></td><% @@bean.columns.each do |p|%>    
+              <td>${<%=@@bean.table_name%>.<%=p.first%>}</td><%end%> 
+            <td>
+              <input type="hidden" value="${<%=@@bean.table_name%>.<%=@@bean.columns[0].first%>}" id="<%=@@bean.columns[0].first%>">
+              <button type="button" id="edit<%=@@bean.table_name%>" class="btn btn-warning btn-sm">修改</button>
+              <button type="button" id="delete<%=@@bean.table_name%>" class="btn btn-danger btn-sm">删除</button>
+              <button type="button" id="show<%=@@bean.table_name%>" class="btn btn-info btn-sm">查看</button>
+            </td>
+          </tr>
+        </s:iterator>
+      </table>
+      <div class="popover top">
+        <div class="arrow"></div>
+        <div class="popover-content delete-popover-content">
+          <p>确定删除此条信息？</p>
+          <button  type="button" id="tipOk" class="btn btn-danger btn-sm">确定</button>
+          <button  type="button" id="tipCancel" class="btn btn-default btn-sm">取消</button>
+        </div>
+      </div>
+      <!-- 分页信息 -->
+      <jsp:include page="/WEB-INF/jsp/layout/page.jsp"/>
+    </div>
+  </div>
+</div>
+<!-- 尾部信息  -->
+<jsp:include page="/WEB-INF/jsp/layout/footer.jsp" />
+</body>
+<script type="text/javascript">
+</script>
+</html>

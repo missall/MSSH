@@ -1,0 +1,43 @@
+package cn.<%=@@projectName%>.service.impl;
+
+import java.io.Serializable;
+import java.util.Date;
+import java.util.List;
+
+import org.apache.log4j.Logger;
+import org.hibernate.criterion.DetachedCriteria;
+import org.hibernate.criterion.Order;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
+
+import cn.<%=@@projectName%>.dao.CommonDao;
+import cn.<%=@@projectName%>.dao.SysDictDao;
+import cn.<%=@@projectName%>.exception.BusinessException;
+import cn.<%=@@projectName%>.framework.PageFetch;
+import cn.<%=@@projectName%>.model.SysDict;
+import cn.<%=@@projectName%>.service.CommonService;
+
+/**
+ * 
+ * @description 公共类模块 的ServiceImpl方法
+ * 
+ */
+public class CommonServiceImpl implements CommonService {
+
+    private Logger logger = Logger.getLogger(CommonServiceImpl.class);
+    
+    @Autowired
+    private SysDictDao dictDao;
+
+    public List<SysDict> getDictList(String type) throws BusinessException {
+        try {
+            //return this.dictDao.getDictList(type);
+						return null;
+        } catch (DataAccessException dae) {
+            this.logger.error("============" + new Date()
+                    + ": error occured when getDictList" + dae);
+            throw new BusinessException("error.data.access");
+        }
+    }
+
+}

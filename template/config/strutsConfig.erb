@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE struts PUBLIC
+    "-//Apache Software Foundation//DTD Struts Configuration 2.0//EN"
+    "http://struts.apache.org/dtds/struts-2.0.dtd">
+    
+<struts>
+  <package name="<%=@@bean.table_name%>" extends="go">
+    <action name="<%=@@bean.table_name%>Action" class="<%=@@bean.table_name%>Action" method="list">
+      <result name="success" type="dispatcher">
+        /WEB-INF/jsp/views/<%=@@bean.table_name[0].downcase<<@@bean.table_name[1,@@bean.table_name.length]%>/<%=@@bean.table_name[0].downcase<<@@bean.table_name[1,@@bean.table_name.length]%>List.jsp
+      </result>
+    </action>
+    <action name="PreAdd<%=@@bean.table_name%>Action" class="<%=@@bean.table_name%>Action" method="preAdd">
+      <result name="success" type="dispatcher">
+        /WEB-INF/jsp/views/<%=@@bean.table_name[0].downcase<<@@bean.table_name[1,@@bean.table_name.length]%>/<%=@@bean.table_name[0].downcase<<@@bean.table_name[1,@@bean.table_name.length]%>New.jsp
+      </result>
+    </action>
+    <action name="Add<%=@@bean.table_name%>Action" class="<%=@@bean.table_name%>Action" method="add">
+      <result name="success" type="json">
+        <param name="root">json</param>
+      </result>
+    </action>
+    <action name="View<%=@@bean.table_name%>Action" class="<%=@@bean.table_name%>Action" method="view">
+      <result name="success" type="dispatcher">
+        /WEB-INF/jsp/views/<%=@@bean.table_name[0].downcase<<@@bean.table_name[1,@@bean.table_name.length]%>/<%=@@bean.table_name[0].downcase<<@@bean.table_name[1,@@bean.table_name.length]%>.jsp
+      </result>
+    </action>
+    <action name="PreUpdate<%=@@bean.table_name%>Action" class="<%=@@bean.table_name%>Action" method="preUpdate">
+      <result name="success" type="dispatcher">
+        /WEB-INF/jsp/views/<%=@@bean.table_name[0].downcase<<@@bean.table_name[1,@@bean.table_name.length]%>/<%=@@bean.table_name[0].downcase<<@@bean.table_name[1,@@bean.table_name.length]%>Edit.jsp
+      </result>
+    </action>
+    <action name="Update<%=@@bean.table_name%>Action" class="<%=@@bean.table_name%>Action" method="update">
+      <result name="success" type="redirect">
+        <%=@@bean.table_name%>Action.action?method=list
+      </result>
+    </action>
+    <action name="delete<%=@@bean.table_name%>Action" class="<%=@@bean.table_name%>Action" method="delete">
+      <result name="success" type="redirect" >
+        <%=@@bean.table_name%>Action.action?method=list
+      </result>
+    </action>
+  </package>
+</struts>

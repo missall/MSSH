@@ -1,0 +1,83 @@
+/*
+ * Copyright (C) 2015  
+ *
+ * 本系统是商用软件,未经授权擅自复制或传播本程序的部分或全部将是非法的.
+ *
+ * @since 2015-6-18
+ * @author Joe
+ * @version 1.0.0
+ */
+package cn.<%=@@projectName%>.service;
+
+import java.util.List;
+import org.hibernate.criterion.DetachedCriteria;
+import cn.<%=@@projectName%>.exception.BusinessException;
+import cn.<%=@@projectName%>.framework.PageFetch;
+import cn.<%=@@projectName%>.model.<%=@@bean.table_name%>;
+
+/**
+ * 
+ * @description  <%=@@bean.table_name%> 的Service方法
+ * 
+ */
+public interface <%=@@bean.table_name%>Service {
+
+    /**
+     * 新增<%=@@bean.table_name%>
+     *
+     * @param <%=@@bean.table_name[0].downcase<<@@bean.table_name[1,@@bean.table_name.length]%>
+     * @return void
+     * @throws BusinessException
+     */
+    public void add<%=@@bean.table_name%>(<%=@@bean.table_name%> <%=@@bean.table_name[0].downcase<<@@bean.table_name[1,@@bean.table_name.length]%>) throws BusinessException;
+
+    /**
+     * 删除<%=@@bean.table_name%>
+     * 
+     * @param <%=@@bean.table_name[0].downcase<<@@bean.table_name[1,@@bean.table_name.length]%>Id
+     * @return void
+     * @throws BusinessException
+     */
+    public void delete<%=@@bean.table_name%>(<%=@@bean.table_name%> <%=@@bean.table_name[0].downcase<<@@bean.table_name[1,@@bean.table_name.length]%>) throws BusinessException;
+
+    /**
+     * 更新<%=@@bean.table_name%>
+     * 
+     * @param <%=@@bean.table_name[0].downcase<<@@bean.table_name[1,@@bean.table_name.length]%>
+     * @return void
+     * @throws BusinessException
+     */
+    public void update<%=@@bean.table_name%>(<%=@@bean.table_name%> <%=@@bean.table_name[0].downcase<<@@bean.table_name[1,@@bean.table_name.length]%>) throws BusinessException;
+
+    /**
+     * 通过Id查找<%=@@bean.table_name%>
+     * 
+     * @param <%=@@bean.table_name[0].downcase<<@@bean.table_name[1,@@bean.table_name.length]%>Id
+     * @return <%=@@bean.table_name%>
+     * @throws BusinessException
+     */
+    public <%=@@bean.table_name%> find<%=@@bean.table_name%>ById(Long <%=@@bean.table_name[0].downcase<<@@bean.table_name[1,@@bean.table_name.length]%>Id)
+            throws BusinessException;
+    
+    /**
+     * 查询<%=@@bean.table_name%>
+     * 
+     * @param dc
+     * @param pf
+     * @return PageFetch<<%=@@bean.table_name%>>
+     * @throws BusinessException
+     */
+    public PageFetch<<%=@@bean.table_name%>> search<%=@@bean.table_name%>(DetachedCriteria dc,
+            PageFetch<?> pf) throws BusinessException;
+
+    /**
+     * 获取全部<%=@@bean.table_name%>列表
+     * 
+     * @param dc
+     * @return List<<%=@@bean.table_name%>>
+     * @throws BusinessException
+     */
+    public List<<%=@@bean.table_name%>> get<%=@@bean.table_name%>List(DetachedCriteria dc)
+            throws BusinessException;
+    
+}

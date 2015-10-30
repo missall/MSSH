@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+  <class name="cn.<%=@@projectName%>.model.SysOperator" table="sys_operator" >
+    <id name="sysOperatorId" type="java.lang.Long">
+      <column name="SYS_OPERATOR_ID" precision="10" scale="0" />
+      <generator class="increment"></generator>
+    </id>
+    <property name="loginName" type="java.lang.String">
+      <column name="LOGIN_NAME" length="6" />
+    </property>
+    <property name="password" type="java.lang.String">
+      <column name="PASSWORD" length="20" />
+    </property>
+    <property name="gender" type="java.lang.Long">
+      <column name="GENDER" precision="1" scale="0" />
+    </property>
+    <property name="idCard" type="java.lang.String">
+      <column name="ID_CARD" length="30" />
+    </property>
+    <property name="name" type="java.lang.String">
+      <column name="NAME" length="20" />
+    </property>
+    <property name="status" type="java.lang.Long">
+      <column name="STATUS" precision="2" scale="0" />
+    </property>
+    <property name="telNo" type="java.lang.String">
+      <column name="TEL_NO" length="21" />
+    </property>
+    <property name="email" type="java.lang.String">
+      <column name="EMAIL" length="50" />
+    </property>
+    <property name="dateCreated" type="java.sql.Timestamp">
+      <column name="DATE_CREATED" length="7" />
+    </property>
+    <property name="createdBy" type="java.lang.Long">
+      <column name="CREATED_BY" precision="10" scale="0" />
+    </property>
+    <property name="dateModified" type="java.sql.Timestamp">
+      <column name="DATE_MODIFIED" length="7" />
+    </property>
+    <property name="modifiedBy" type="java.lang.Long">
+      <column name="MODIFIED_BY" precision="10" scale="0" />
+    </property>
+    <property name="deleteFlag" type="long">
+      <column name="delete_flag" />
+    </property>
+    <set name="sysRoles" table="sys_role_operator" >
+      <key column="SYS_OPERATOR_ID" />
+      <many-to-many column="SYS_ROLE_ID" class="cn.<%=@@projectName%>.model.SysRole" />
+    </set>
+  </class>   
+</hibernate-mapping>

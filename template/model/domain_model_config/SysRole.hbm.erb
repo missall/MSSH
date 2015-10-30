@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+  <class name="cn.<%=@@projectName%>.model.SysRole" table="sys_role">
+    <id name="sysRoleId" type="java.lang.Long">
+      <column name="SYS_ROLE_ID" precision="10" scale="0" />
+      <generator class="increment"></generator>
+    </id>
+    <property name="name" type="java.lang.String">
+      <column name="NAME"  />
+    </property>
+    <property name="deleteFlag" type="java.lang.Long">
+      <column name="DELETE_FLAG"  />
+    </property>
+    <property name="dateModified" type="java.sql.Timestamp">
+      <column name="DATE_MODIFIED" length="7" />
+    </property>
+    <property name="modifiedBy" type="java.lang.Long">
+      <column name="MODIFIED_BY" precision="10" scale="0" />
+    </property>
+    <property name="createdBy" type="java.lang.Long">
+      <column name="CREATED_BY" precision="10" scale="0" />
+    </property>
+    <property name="dateCreated" type="java.sql.Timestamp">
+      <column name="DATE_CREATED" length="7" />
+    </property>  
+    <set name="sysFunctions" table="sys_role_function">
+      <key column="SYS_ROLE_ID" />
+      <many-to-many  column="SYS_FUNCTION_ID" class="cn.<%=@@projectName%>.model.SysFunction" />
+    </set>
+  </class>
+</hibernate-mapping>

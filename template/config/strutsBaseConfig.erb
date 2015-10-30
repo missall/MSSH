@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE struts PUBLIC
+    "-//Apache Software Foundation//DTD Struts Configuration 2.0//EN"
+    "http://struts.apache.org/dtds/struts-2.0.dtd">
+
+<struts>
+  <constant name="struts.i18n.encoding" value="UTF-8" />
+  <constant name="struts.multipart.maxSize" value="524288000" />
+  <package name="go" extends="json-default" abstract="true">
+    <!--开发期间注释拦截器-->
+    <!--interceptors>
+      <interceptor name="around" class="cn.<%=@@projectName%>.framework.AroundAdviceInterceptor" />
+      <interceptor-stack name="myStack">
+        <interceptor-ref name="around" />
+        <interceptor-ref name="defaultStack" />
+      </interceptor-stack>
+    </interceptors>
+    <default-interceptor-ref name="myStack" /-->
+    <global-results>
+      <result name="index" type="dispatcher"> /index.jsp </result>
+      <result name="admin" type="dispatcher"> /admin.jsp </result>
+      <result name="error" type="dispatcher"> /error.jsp </result>
+    </global-results>
+  </package>
+
+  <package name="privilege" extends="go">
+    <action name="IndexAction" class="LoginAction" method="index">
+      <result name="success" type="dispatcher">
+        /index.jsp
+      </result>
+    </action>
+    <action name="LoginAction" class="LoginAction" method="login">
+      <result name="success" type="json">
+        <param name="root">json</param>
+      </result>
+      <result name="fail" type="json">
+        <param name="root">json</param>
+      </result>
+    </action>
+    <action name="LogoutAction" class="LoginAction" method="logout">
+      <result name="success" type="dispatcher">
+        /admin.jsp
+      </result>
+    </action>
+  </package><% columns.each do |p|%>
+  <include file="<%=p%>" /><% end %>
+</struts>

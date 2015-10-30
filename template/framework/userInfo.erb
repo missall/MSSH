@@ -1,0 +1,86 @@
+package cn.<%=@@projectName%>.framework;
+
+import java.io.Serializable;
+
+public class UserInfo implements Serializable {
+
+    private static final long serialVersionUID = -3321150108058265819L;
+    /** 登录编号 */
+    private String loginName;
+    private String loginTime;
+    private String nickName;
+    private Long operatorId;
+	private String telNo;
+	private String email;
+    private Long gender;
+    private Long status;
+    
+    public Long getStatus() {
+        return status;
+    }
+    public void setStatus(Long status) {
+        this.status = status;
+    }
+
+    public String getTelNo() {
+		return telNo;
+	}
+
+	public void setTelNo(String telNo) {
+		this.telNo = telNo;
+	}
+
+	public String getEmail() {
+		return email;
+	}
+
+	public void setEmail(String email) {
+		this.email = email;
+	}
+
+	public Long getGender() {
+		return gender;
+	}
+
+	public void setGender(Long gender) {
+		this.gender = gender;
+	}
+
+    public String getLoginTime() {
+        return this.loginTime;
+    }
+
+    public Long getOperatorId() {
+        return this.operatorId;
+    }
+
+    public void setLoginTime(String loginTime) {
+        this.loginTime = loginTime;
+    }
+
+    public void setOperatorId(Long operatorId) {
+        this.operatorId = operatorId;
+    }
+
+    public String getLoginName() {
+        return loginName;
+    }
+
+    public void setLoginName(String loginName) {
+        this.loginName = loginName;
+    }
+
+    public String getNickName() {
+        return nickName;
+    }
+
+    public void setNickName(String nickName) {
+        this.nickName = nickName;
+    }
+
+    public String toString() {
+        StringBuffer sb = new StringBuffer("用户名：");
+        sb.append(this.nickName).append("; 登录名：").append(this.loginName);
+        return sb.toString();
+    }
+}

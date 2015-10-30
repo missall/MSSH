@@ -1,0 +1,153 @@
+package cn.<%=@@projectName%>.util;
+
+import java.io.PrintWriter;
+import java.text.ParseException;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.tuckey.web.filters.urlrewrite.utils.StringUtils;
+
+import cn.<%=@@projectName%>.framework.PageFetch;
+
+public class Tools {	
+	
+	
+
+    /**
+     * 由list构造分页对象
+     * 
+     * @param items
+     * @param startIndex
+     * @param pageSize
+     * @return
+     */
+    public static <T> PageFetch<T> getPageFetch(List<T> items, int startIndex) {
+        int totalCount = items.size();
+        int toIndex = startIndex + PageFetch.PAGESIZE;
+        if (toIndex > totalCount) {
+            toIndex = totalCount;
+        }
+        List<T> page = items.subList(startIndex, toIndex);
+        return new PageFetch<T>(page, totalCount, startIndex);
+    }
+
+    /**
+     * 从Request中得到相应的参数 如果没有该参数返回0
+     * 
+     * @param pf
+     * @param index
+     *            预期对象所在数组的标识位
+     * @return
+     */
+    public static String getParameterFormRequest(HttpServletRequest request,
+            String parameter) {
+        String value = request.getParameter(parameter);
+        if (StringUtils.isBlank(value)) {
+            return "0";
+        }
+        return value;
+    }
+
+    /**
+     * 将结果返回给xmlRequest
+     * 
+     * @param s
+     * @param dictList
+     * @return
+     * @throws Exception
+     */
+    @Deprecated
+    public static void printMsgToClient(String result,
+            HttpServletResponse response) throws Exception {
+        response.setCharacterEncoding("UTF-8");
+        PrintWriter out = response.getWriter();
+        try {
+            out.print(result);
+        } finally {
+            out.close();
+        }
+    }
+
+
+    /**
+     * 将其他类型的数据变为String 如果输入为null，则return ""
+     * 
+     * @param time
+     * @return
+     * @throws ParseException
+     */
+    public static String getString(Object Object) {
+        if (Object == null) {
+            return "";
+        }
+        return String.valueOf(Object);
+    }
+    
+    /**
+     * 将其他类型的数据变为String 如果输入为null，则return ""
+     * 
+     * @param time
+     * @return
+     * @throws ParseException
+     */
+    public static String getCountString(Object Object) {
+        if (Object == null) {
+            return "0";
+        }
+        return String.valueOf(Object);
+    }
+
+    /**
+     * 将信息存入request在前台显示
+     * 
+     * @param request
+     * @param level
+     *            为error表示错误
+     * @param message
+     */
+    public static void setMessges(HttpServletRequest request, String level,
+            String message) {
+        System.out.println(message);
+    }
+
+    public static void setMessges(HttpServletRequest request, String level,
+            String message, String[] args) {
+        System.out.println(message);
+    }
+
+
+    /***************************************************************************
+     * 将特殊字符转换成html显示代码
+     **************************************************************************/
+    public static String encodeStrToHTML(String str) {
+        if (str == null || str.trim().length() == 0) {
+            return "";
+        }
+
+        str = str.replaceAll("\n|\r|\t", "<br />");
+        /*
+         * str = str.replaceAll("&","&amp;"); str =
+         * str.replaceAll("\"","&quot;"); str = str.replaceAll(" ","&nbsp;");
+         * str = str.replaceAll("<","&lt;"); str = str.replaceAll(">","&gt;");
+         */
+
+        return str;
+    }
+
+    //转译特殊字符
+    public static String transDesc(String description) {
+        String descriStr = description.trim().replaceAll("\n", "<br>").replaceAll("<br>", "<br/>").replaceAll(" ", "");
+        return descriStr;
+    }
+    //截取字符串中最后一个字符
+    public static String subStringStr(String str) {
+        String s = str.substring(0,str.length()-2);
+        return s;
+    }
+
+}

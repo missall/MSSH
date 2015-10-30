@@ -1,0 +1,198 @@
+package cn.<%=@@projectName%>.util;
+
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.apache.commons.lang.StringUtils;
+
+/**
+ * 
+ * @description 有关Action的公共方法
+ * 
+ */
+public class ActionTools {
+
+    /**
+     * 判断用户是否为系统超级管理员 如果是则返回true TODO 该方法会根据需求变更
+     * 
+     * @param mapping
+     * @param argForm
+     * @param request
+     * @param response
+     * @param forward
+     * @return
+     */
+    public static boolean checkAdmin(String operaotrId) {
+        if (BaseConstant.ADMIN_ID == Long.parseLong(operaotrId)
+                || BaseConstant.BILLING_SYSTEM_ID == Long.parseLong(operaotrId)) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 从一个已有得Map中获得一个字串的映射值
+     * 
+     * @param functionName
+     * @param actionFilterMap
+     * @return
+     */
+    public static String getFunctionName(String functionName,
+            Map<String, String> actionFilterMap) {
+        if (actionFilterMap.containsKey(functionName)) {
+            return (String) actionFilterMap.get(functionName);
+        } else {
+            return functionName;
+        }
+    }
+
+    /**
+     * 将"Srh"、"Action"过滤掉
+     * 
+     * @param request
+     * @return
+     */
+    public static String getActionName(String actionName) {
+        // TODO 上面是新实现的
+        // 将方法中的Action、Srh过滤掉
+        actionName = actionName.replace("Action", "");
+        if (actionName.indexOf("Srh") > 0) {
+            actionName = actionName.replace("Srh", "");
+        }
+        return actionName;
+    }
+
+    /**
+     * 从request中取得方法
+     * 
+     * @param request
+     * @return
+     */
+    public static String getMethodName(HttpServletRequest request) {
+        // 从request中获得操作方法名
+        List<String> actionMethodList = getActionMethod(request, "method", "baseAction");
+
+        String functionName = null;
+        if (actionMethodList.size() == 0) {
+            // 如果method为空则默认为init方法
+            functionName = "init";
+        } else {
+            functionName = actionMethodList.get(0);
+        }
+
+        return functionName;
+    }
+
+    /**
+     * 以下方法由BaseAction和BeforeAdvice获取方法名共用 Gets the method name based on the
+     * prepender passed to it.
+     * 
+     * @param request
+     * @param prepend
+     * @return
+     */
+    public static List<String> getActionMethod(HttpServletRequest request,
+            String prepend, String method) {
+        // initialize methodList
+        List<String> methodList = new ArrayList<String>();
+        // for backwards compatibility, try with no prepend first
+        String methodParameter = handleParameterName(request
+                .getParameter(prepend));
+        if (methodParameter != null) {
+            methodList.add(methodParameter);
+        }
+        @SuppressWarnings("unchecked")
+        Enumeration<String> e = request.getParameterNames();
+        while (e.hasMoreElements()) {
+            String currentName = e.nextElement();
+            if (currentName.startsWith(prepend + "=")) {
+                String[] parameterMethodNameAndArgs = StringUtils.split(
+                        currentName, "=");
+                methodList.add(parameterMethodNameAndArgs[1]);
+            }
+        }
+
+        List<String> current = new ArrayList<String>();
+        String lastMethodFromRequest = getLastMethodFromRequest(request, method);
+        // 将上次方法从方法列表中移除
+        if (lastMethodFromRequest == null) {
+            current = methodList;
+        } else if (methodList.size() > 0) {
+            current = subStract(methodList, lastMethodFromRequest);
+        }
+        return current;
+    }
+
+    /**
+     * 处理类名 将cn.bstar.gale.<%=@@projectName%>.web.privilege.action.PrivilegeRoleAction@asdf1转化为PrivilegeRole
+     * 
+     * @return
+     */
+    public static String substractClassName(String className) {
+        int startPos = className.lastIndexOf(".");
+        int endPos = className.indexOf("@");
+        return getActionName(className.substring(startPos + 1, endPos));
+    }
+
+    /**
+     * 将本次方法存入request
+     * 
+     * @param request
+     * @param requestParameters
+     */
+    public static void setLastMethodFromRequest(HttpServletRequest request,
+            String requestParameters, String method) {
+        request.setAttribute(method, requestParameters);
+    }
+
+    /**
+     * 处理方法名 去掉空格和首字母小写
+     */
+    private static String handleParameterName(String parameterName) {
+        if (parameterName != null) {
+            // trim any whitespace around - this might happen on buttons
+            parameterName = parameterName.trim();
+            // lowercase first letter
+            return parameterName.replace(parameterName.charAt(0),
+                    Character.toLowerCase(parameterName.charAt(0)));
+        }
+
+        return parameterName;
+    }
+
+    /**
+     * 从request中提取上次方法名
+     * 
+     * @param request
+     * @return
+     */
+    private static String getLastMethodFromRequest(HttpServletRequest request,
+            String method) {
+        String all = (String) request.getAttribute(method);
+        if (all == null) {
+            setLastMethodFromRequest(request, all, method);
+        }
+        return all;
+    }
+
+    /**
+     * 将上次request方法从此列表移除
+     * 
+     * @param methodList
+     * @param lastmethodFromRequest
+     * @return
+     */
+    private static List<String> subStract(List<String> methodList,
+            String lastmethodFromRequest) {
+        for (int i = 0; i < methodList.size(); i++) {
+            if (lastmethodFromRequest.equals(methodList.get(i))) {
+                methodList.remove(i);
+            }
+        }
+        return methodList;
+    }
+}

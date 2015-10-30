@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+  <class name="cn.<%=@@projectName%>.model.SysDict" table="sys_dict">
+    <id name="sysDictId" type="java.lang.Long">
+      <column name="SYS_DICT_ID" precision="10" scale="0" />
+      <generator class="increment"></generator>
+    </id>
+    <property name="type" type="java.lang.Long">
+      <column name="MAIN_ID" precision="4" scale="0" />
+    </property>
+    <property name="value" type="java.lang.Long">
+      <column name="SUB_ID" precision="4" scale="0" />
+    </property>
+    <property name="content" type="java.lang.String">
+      <column name="MAIN_DESC" length="30" />
+    </property>
+    <property name="label" type="java.lang.String">
+      <column name="SUB_DESC" length="30" />
+    </property>
+    <property name="dateCreated" type="java.sql.Timestamp">
+      <column name="DATE_CREATED" />
+    </property>
+    <property name="dateModified" type="java.sql.Timestamp">
+      <column name="DATE_MODIFIED" />
+    </property>
+    <property name="modifiedBy" type="java.lang.Long">
+      <column name="MODIFIED_BY" />
+    </property>
+    <property name="isBoolean" type="java.lang.Long">
+      <column name="IS_BOOLEAN" precision="1" scale="0" />
+    </property>
+    <many-to-one name="operator" class="cn.<%=@@projectName%>.model.SysOperator" fetch="select">
+      <column name="CREATED_BY" precision="10" scale="0" />
+    </many-to-one> 
+  </class>
+</hibernate-mapping>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
+
+<beans>
+  <bean id="propertyConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+    <property name="location">
+      <value>/WEB-INF/config/<%=@@projectName%>_configure.properties</value>
+    </property>
+  </bean>
+
+  <!-- 定义postgres数据源Bean，使用C3P0数据源实现 -->
+  <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">  
+    <property name="driverClassName">
+      <value>org.postgresql.Driver</value>
+    </property>
+    <property name="url">
+      <value>jdbc:postgresql://${<%=@@projectName%>.url}</value>
+    </property>
+    <property name="username">
+      <value>${<%=@@projectName%>.user}</value>
+    </property>
+    <property name="password">
+      <value>${<%=@@projectName%>.password}</value>
+    </property>
+    <property name="initialSize">
+      <value>50</value>
+    </property>
+      <property name="maxActive">
+      <value>100000</value>
+    </property>
+    <property name="maxWait">
+      <value>5000</value>
+    </property>
+  </bean>
+  
+  <!-- 定义mysql数据源Bean，使用C3P0数据源实现 -->
+  <!--bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource" destroy-method="close">   
+    <property name="driverClass">
+      <value>com.mysql.jdbc.Driver</value>
+    </property>
+    <property name="jdbcUrl">
+      <value>jdbc:mysql://${<%=@@projectName%>.url}</value>
+    </property>
+    <property name="user">
+      <value>${<%=@@projectName%>.user}</value>
+    </property>
+    <property name="password">
+      <value>${<%=@@projectName%>.password}</value>
+    </property>
+    <property name="initialPoolSize">
+      <value>10</value>
+    </property>
+      <property name="maxPoolSize">
+      <value>40</value>
+    </property>
+    <property name="minPoolSize">
+      <value>10</value>
+    </property>
+    <property name="maxIdleTime">
+      <value>3</value>
+    </property>
+  </bean-->
+</beans>

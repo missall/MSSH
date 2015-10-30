@@ -1,0 +1,99 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+require 'deprecated'
+require "dbi"
+require 'erb'
+require './table.rb'
+require 'fileutils'
+
+class DbAdapter 
+
+@@bean = nil
+@@modelName = nil
+
+
+HOSTNAME = "192.168.88.2"
+DBNAME = "ngbnms"
+USERNAME = "nms"
+PASSWORD = "nms!@#"
+
+#mysql column type to java attr type hashmap
+@@columns_to_attr_type = {
+     "bit"            => "java.lang.Boolean",
+     "tinyint"        => "java.lang.Integer",
+     "smallint"       => "java.lang.Integer",
+     "mediumint"      => "java.lang.Integer",
+     "int"            => "java.lang.Integer",
+     "integer"        => "java.lang.Integer",
+     "bigint"         => "java.math.BigInteger",
+     "real"           => "java.lang.Integer",
+     "double"         => "java.lang.Double",
+     "float"          => "java.lang.Float",
+     "decimal"        => "java.math.BigDecimal",
+     "numeric"        => "java.math.BigDecimal",
+     "char"           => "java.sql.Timestamp",
+     "varchar"        => "java.lang.String",
+     "binary"         => "java.lang.Long",
+     "varbinary"      => "java.lang.Long",
+     "date"           => "java.sql.Date",
+     "time"           => "java.sql.Time",
+     "datetime"       => "java.sql.Timestamp",
+     "timestamp"      => "java.sql.Timestamp",
+     "year"           => "java.sql.Date",
+     "tinyblob"       => "java.lang.String",
+     "blob"           => "java.lang.byte[]",
+     "mediumblob"     => "java.lang.String",
+     "longblob"       => "java.lang.String",
+     "tinytext"       => "java.lang.Long",
+     "text"           => "java.lang.String",
+     "mediumtext"     => "java.lang.String",
+     "longtext"       => "java.sql.Timestamp",
+     "enum"           => "java.lang.String",
+     "set"            => "java.lang.Long"
+}
+
+
+def self.getTableDef(dbh,table_name)
+     columns = []
+     ts = dbh.execute("desc " + table_name)
+     ts.each do |row| 
+          #TODO:row[1]字段类型转换
+          java_arrt_type = @@columns_to_attr_type["#{row[1].split('(').first}"]
+          arrName = row[0].gsub(/^.|_./){ |match| match.size>1?match[1].upcase : match.upcase }
+          columns.push([row[0],java_arrt_type,arrName])
+     end
+     #puts columns
+     return Table.new(table_name,columns)
+end
+
+def self.createModelHbmFile
+     begin
+          # connect to the MySQL server
+          dbh = DBI.connect("DBI:Mysql:#{DBNAME}:#{HOSTNAME}", USERNAME, PASSWORD)
+          #dbh = DBI.connect("DBI:Pg:dbname=#{DBNAME}:host=#{HOSTNAME}", USERNAME, PASSWORD)
+          sth = dbh.execute("show tables")
+          sth.each do |row|
+               #首字母大写转换 
+               @@modelName = row[0].gsub(/^.|_./){ |match| match.size>1?match[1].upcase : match.upcase }
+               output = File.new("#{@@modelName}.hbm.xml","w+")
+               @@bean = getTableDef(dbh,row[0])
+               File.open("template/config/modelHbmConfig.erb") { |fh| 
+               template = ERB.new(fh.read) 
+               output.print template.result(binding)   
+          }
+          puts "创建 #{@@modelName}.hbm.xml"
+          end
+          sth.finish
+     rescue DBI::DatabaseError => e
+          puts "An error occurred"
+          puts "Error code:    #{e.err}"
+          puts "Error message: #{e.errstr}"
+     ensure
+          # disconnect from server
+          dbh.disconnect if dbh
+     end
+end
+
+end
+
+DbAdapter.createModelHbmFile

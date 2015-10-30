@@ -1,0 +1,29 @@
+package cn.<%=@@projectName%>.service;
+
+import java.io.Serializable;
+import java.util.List;
+
+import org.hibernate.criterion.DetachedCriteria;
+import org.hibernate.criterion.Order;
+
+import cn.<%=@@projectName%>.exception.BusinessException;
+import cn.<%=@@projectName%>.framework.PageFetch;
+import cn.<%=@@projectName%>.model.SysDict;
+
+/**
+ * 
+ * @description 公共类模块 的Service方法
+ * 
+ */
+public interface CommonService {
+
+    /**
+     * 根据类型取得配置
+     * 
+     * @param type
+     * @return
+     * @throws BusinessException
+     */
+    public List<SysDict> getDictList(String type) throws BusinessException;
+
+}

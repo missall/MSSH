@@ -1,0 +1,343 @@
+package cn.<%=@@projectName%>.framework;
+
+import java.io.Serializable;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.SerializationUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.hibernate.Criteria;
+import org.hibernate.Hibernate;
+import org.hibernate.HibernateException;
+import org.hibernate.Query;
+import org.hibernate.Session;
+import org.hibernate.criterion.DetachedCriteria;
+import org.hibernate.criterion.Order;
+import org.hibernate.criterion.Projections;
+import org.springframework.dao.DataAccessException;
+import org.springframework.orm.hibernate3.HibernateCallback;
+import org.springframework.orm.hibernate3.support.HibernateDaoSupport;
+import org.springframework.util.Assert;
+
+public abstract class AbstractManager extends HibernateDaoSupport {
+
+    protected static Log log = LogFactory.getLog(AbstractManager.class);
+
+    @SuppressWarnings("unused")
+    private boolean cacheQueries = false;
+
+    @SuppressWarnings("unused")
+    private String queryCacheRegion;
+
+    public void setCacheQueries(boolean cacheQueries) {
+        this.cacheQueries = cacheQueries;
+    }
+
+    public void setQueryCacheRegion(String queryCacheRegion) {
+        this.queryCacheRegion = queryCacheRegion;
+    }
+
+
+    /**
+     * 获取任一页第一条数据在数据集的位置，每页条数使用默认值.
+     * 
+     * @see #getStartOfPage(int,int)
+     */
+    protected static int getStartOfPage(int pageNo) {
+        return getStartOfPage(pageNo, PageFetch.PAGESIZE);
+    }
+
+    /**
+     * 获取任一页第一条数据在数据集的位置.
+     * 
+     * @param pageNo
+     *            从1开始的页号
+     * @param pageSize
+     *            每页记录条数
+     * @return 该页第一条数据
+     */
+    public static int getStartOfPage(int pageNo, int pageSize) {
+        return (pageNo - 1) * pageSize;
+    }
+
+    /**
+     * 创建Query对象.
+     * 对于需要first,max,fetchsize,cache,cacheRegion等诸多设置的函数,可以在返回Query后自行设置.
+     * 留意可以连续设置,如下：
+     * 
+     * <pre>
+     * dao.getQuery(hql).setMaxResult(100).setCacheable(true).list();
+     * </pre>
+     * 
+     * 调用方式如下：
+     * 
+     * <pre>
+     *        dao.createQuery(hql)
+     *        dao.createQuery(hql,arg0);
+     *        dao.createQuery(hql,arg0,arg1);
+     *        dao.createQuery(hql,new Object[arg0,arg1,arg2])
+     * </pre>
+     * 
+     * @param values
+     *            可变参数.
+     */
+    public Query createQuery(String hql, Object... values) {
+        Assert.hasText(hql);
+        Session session = getSession();
+        try {
+            Query query = session.createQuery(hql);
+            for (int i = 0; i < values.length; i++) {
+                query.setParameter(i, values[i]);
+            }
+            return query;
+        } finally {
+            releaseSession(session);
+        }
+    }
+
+    /**
+     * 去除hql的select 子句，未考虑union的情况,用于pagedQuery.
+     * 
+     * @see #pagedQuery(String,int,int,Object[])
+     */
+    private static String removeSelect(String hql) {
+        Assert.hasText(hql);
+        int beginPos = hql.toLowerCase().indexOf("from");
+        Assert.isTrue(beginPos != -1, " hql : " + hql
+                + " must has a keyword 'from'");
+        return hql.substring(beginPos);
+    }
+
+    /**
+     * 去除hql的orderby 子句，用于pagedQuery.
+     * 
+     * @see #pagedQuery(String,int,int,Object[])
+     */
+    private static String removeOrders(String hql) {
+        Assert.hasText(hql);
+        Pattern p = Pattern.compile("order\\s*by[\\w|\\W|\\s|\\S]*",
+                Pattern.CASE_INSENSITIVE);
+        Matcher m = p.matcher(hql);
+        StringBuffer sb = new StringBuffer();
+        while (m.find()) {
+            m.appendReplacement(sb, "");
+        }
+        m.appendTail(sb);
+        return sb.toString();
+    }
+
+    public Object save(Object entity) {
+        return getHibernateTemplate().save(entity);
+    }
+    public void save1(Object entity){
+        this.getHibernateTemplate().merge(entity);
+    }
+    public void update(Object entity) {
+        //getHibernateTemplate().update(entity);
+        this.getHibernateTemplate().merge(entity);
+    }
+
+    public void delete(Object entity) {
+        getHibernateTemplate().delete(entity);
+    }
+
+    protected Object load(Class<?> entity, final Serializable id) {
+        return getHibernateTemplate().load(entity, id);
+    }
+
+    protected Object get(Class<?> entity, final Serializable id) {
+        return getHibernateTemplate().get(entity, id);
+    }
+
+    public <T>PageFetch<T> findPageByCriteria(final DetachedCriteria detachedCriteria) {
+        return findPageByCriteria(detachedCriteria, PageFetch.PAGESIZE, 0);
+    }
+
+    public <T> PageFetch<T> findPageByCriteria(
+            final DetachedCriteria detachedCriteria, final int pageSize,
+            final int startIndex) {
+        final Order[] orders = { Order.desc("dateCreated") };
+        return findPageByCriteria(detachedCriteria, pageSize, startIndex,
+                orders);
+    }
+
+    public <T>PageFetch<T> findPageByCriteriaWithoutOrder(
+            final DetachedCriteria detachedCriteria, final int pageSize,
+            final int startIndex) {
+        return getHibernateTemplate().execute(
+                new HibernateCallback<PageFetch<T>>() {
+                    @SuppressWarnings("unchecked")
+                    public PageFetch<T> doInHibernate(Session session)
+                            throws HibernateException {
+                        DetachedCriteria countCriteria = (DetachedCriteria) SerializationUtils.clone(detachedCriteria);
+                        countCriteria.setProjection(Projections.rowCount());
+                        Long totalCount = (Long) countCriteria
+                                .getExecutableCriteria(session).uniqueResult();
+                        Criteria criteria = detachedCriteria
+                                .getExecutableCriteria(session);
+
+                        List<T> items = criteria.setFirstResult(startIndex)
+                                .setMaxResults(pageSize).list();
+                        PageFetch<T> ps = new PageFetch<T>(items, totalCount.intValue(),
+                                pageSize, startIndex);
+                        return ps;
+                    }
+                });
+    }
+
+    public <T>List<T> findByCriteria(
+            final DetachedCriteria detachedCriteria, final int pageSize,
+            final int startIndex, final Order[] orders) {
+        return getHibernateTemplate().execute(
+                new HibernateCallback<List<T>>() {
+                    public List<T> doInHibernate(Session session)
+                            throws HibernateException {
+                        Criteria criteria = detachedCriteria.getExecutableCriteria(session);
+                        if (!ArrayUtils.isEmpty(orders)) {
+                            for (Order order : orders) {
+                                if (order != null)
+                                    criteria.addOrder(order);
+                            }
+                        }
+                        @SuppressWarnings("unchecked")
+						List<T> list = criteria.setFirstResult(startIndex).setMaxResults(pageSize).list();
+                        return list;
+                    }
+                });
+    }
+    
+    public <T>PageFetch<T> findPageByCriteria(
+            final DetachedCriteria detachedCriteria, final int pageSize,
+            final int startIndex, final Order[] orders) {
+        return getHibernateTemplate().execute(
+                new HibernateCallback<PageFetch<T>>() {
+                    @SuppressWarnings("unchecked")
+                    public PageFetch<T> doInHibernate(Session session)
+                            throws HibernateException {
+                        DetachedCriteria countCriteria = (DetachedCriteria) SerializationUtils.clone(detachedCriteria);
+                        countCriteria.setProjection(Projections.rowCount());
+                        Long totalCount = (Long) countCriteria
+                                .getExecutableCriteria(session).uniqueResult();
+                        Criteria criteria = detachedCriteria
+                                .getExecutableCriteria(session);
+
+                        if (!ArrayUtils.isEmpty(orders)) {
+                            for (Order order : orders) {
+                                if (order != null)
+                                    criteria.addOrder(order);
+                            }
+                        }
+                        List<T> items = criteria.setFirstResult(startIndex)
+                                .setMaxResults(pageSize).list();
+                        PageFetch<T> ps = new PageFetch<T>(items, totalCount.intValue(),
+                                pageSize, startIndex);
+                        return ps;
+                    }
+                });
+    }
+
+    /**
+     * find the first object by criteria.
+     * 
+     * @param detachedCriteria
+     * @return
+     */
+    public <T> Object findFirstEntityByCriteria(
+            final DetachedCriteria detachedCriteria, Class<T> clazz) {
+        return getHibernateTemplate().execute(new HibernateCallback<Object>() {
+            @SuppressWarnings("unchecked")
+            public Object doInHibernate(Session session)
+                    throws HibernateException, SQLException {
+                Criteria criteria = detachedCriteria.getExecutableCriteria(session);
+                List<Object> l = criteria.setFirstResult(0).setMaxResults(1)
+                        .list();
+                if (l.isEmpty()) {
+                    return null;
+                } else {
+                    return l.get(0);
+                }
+            }
+//        }, true);
+        });
+    }
+
+    public <T>PageFetch<T> findPageFromList(List<T> items, final int pageSize,
+            final int startIndex) {
+        return new PageFetch<T>(items, items.size(), pageSize, startIndex);
+    }
+
+    /**
+     * SQL方式物理删除数据。
+     * 
+     * @param talbe_name
+     * @param column_name
+     * @param column_value
+     */
+    public void destroyData(final String talbe_name, final String column_name,
+            final String column_value) throws DataAccessException {
+        getHibernateTemplate().execute(new HibernateCallback<Object>() {
+            public Object doInHibernate(Session session)
+                    throws HibernateException {
+                StringBuffer sb = new StringBuffer();
+                sb.append("delete from ").append(talbe_name);
+                sb.append(" where ");
+                sb.append(column_name).append("=")
+                        .append("'" + column_value + "'");
+                session.createSQLQuery(sb.toString()).executeUpdate();
+                return null;
+            }
+        });
+    }
+
+    /**
+     * 获取序列ID。 如：根据以下SQL获取序列ID并在前面填充0。 select LPAD(seq_service.nextval,4,'0') as
+     * serviceId from dual。
+     * 
+     * @return
+     */
+    public String getSequence(String sequenceName, int lengthOfColumn) {
+        Session session = getSession();
+        try {
+            String sql = "select LPAD(" + sequenceName + ".nextval,"
+                    + lengthOfColumn + ",'0') as id from dual";
+            String id = (String) session.createSQLQuery(sql)
+                    .addScalar("id", Hibernate.STRING).uniqueResult();
+            return id;
+        } finally {
+            releaseSession(session);
+        }
+    }
+
+    public Object findFirstByCriteria(DetachedCriteria criteria) {
+        List<?> list = findAllByCriteria(criteria);
+        if (list.isEmpty()) {
+            return null;
+        } else {
+            return list.get(0);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+	public <T> List<T> findAllByCriteria(final DetachedCriteria criteria) {
+        return getHibernateTemplate().findByCriteria(criteria);
+    }
+
+    protected Object queryUniqueResultByCriteria(final DetachedCriteria criteria) {
+        return getHibernateTemplate().execute(new HibernateCallback<Object>() {
+            public Object doInHibernate(Session session)
+                    throws HibernateException, SQLException {
+                return criteria.getExecutableCriteria(session).uniqueResult();
+            }
+        });
+    }
+
+    public int getCountByCriteria(final DetachedCriteria criteria) {
+        criteria.setProjection(Projections.rowCount());
+        return (Integer) queryUniqueResultByCriteria(criteria);
+    }
+
+}

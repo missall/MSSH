@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
+
+<beans>
+  <bean id="sessionFactory"
+    class="org.springframework.orm.hibernate3.LocalSessionFactoryBean">
+    <property name="dataSource" ref="dataSource" />
+    <!-- mappingResources -->
+    <property name="mappingResources">
+      <list><% columns.each do |p| %>
+        <value>cn/<%=@@projectName%>/model/<%=p%></value><% end %>
+      </list>
+    </property>
+    <property name="hibernateProperties">
+      <props>
+        <prop key="hibernate.dialect">
+          org.hibernate.dialect.PostgreSQLDialect
+        </prop>
+        <!-- 以下开发期间为true -->
+        <prop key="hibernate.show_sql">${hibernate.show_sql}</prop>
+        <prop key="hibernate.use_sql_comments">true</prop>
+        <prop key="hibernate.format_sql">true</prop>
+        <!-- 以上开发期间为true -->
+        <!--解决weblogic抛出的ClassNotFoundException:org.hibernate.hql.ast.HqlToken异常 -->
+        <prop key="hibernate.query.factory_class">
+          org.hibernate.hql.classic.ClassicQueryTranslatorFactory
+        </prop>
+      </props>
+    </property>
+  </bean>
+
+  <bean id="transactionManager"  class="org.springframework.orm.hibernate3.HibernateTransactionManager">
+    <property name="sessionFactory">
+      <ref bean="sessionFactory" />
+    </property>
+  </bean>
+
+  <bean
+    class="org.springframework.aop.framework.autoproxy.BeanNameAutoProxyCreator">
+    <property name="beanNames">
+      <value>*Service,*Dao</value>
+    </property>
+    <property name="interceptorNames">
+      <list>
+        <value>transactionInterceptor</value>
+      </list>
+    </property>
+  </bean>
+
+  <bean id="transactionInterceptor"
+    class="org.springframework.transaction.interceptor.TransactionInterceptor">
+    <property name="transactionManager">
+      <ref bean="transactionManager" />
+    </property>
+    <property name="transactionAttributes">
+      <props>
+        <prop key="*">PROPAGATION_REQUIRED</prop>
+      </props>
+    </property>
+  </bean>
+
+</beans>

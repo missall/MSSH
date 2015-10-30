@@ -1,0 +1,60 @@
+package cn.<%=@@projectName%>.framework; 
+  
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.struts2.components.Component;
+import org.apache.struts2.views.jsp.ComponentTagSupport;
+
+import com.opensymphony.xwork2.util.ValueStack;
+  
+/** 
+ * 分页标签 
+ */  
+@SuppressWarnings("serial")
+public class PageTag extends ComponentTagSupport {  
+  
+    private String cpage;  
+    private String total;  
+    private String visitUrl;  
+    private String styleClass;  
+    private String theme;  
+  
+    public void setCpage(String cpage) {  
+        this.cpage = cpage;  
+    }  
+  
+    public void setTotal(String total) {  
+        this.total = total;  
+    }  
+  
+    public void setVisitUrl(String visitUrl) {  
+        this.visitUrl = visitUrl;  
+    }  
+  
+    public void setStyleClass(String styleClass) {  
+        this.styleClass = styleClass;  
+    }  
+  
+    public void setTheme(String theme) {  
+        this.theme = theme;  
+    }  
+  
+    @Override  
+    public Component getBean(ValueStack arg0, HttpServletRequest arg1,  
+            HttpServletResponse arg2) {  
+        return new Pages(arg0, arg1);  
+    }  
+  
+    protected void populateParams() {  
+        super.populateParams();  
+  
+        Pages pages = (Pages) component;  
+        pages.setCpage(cpage);  
+        pages.setTotal(total);  
+        pages.setVisitUrl(visitUrl);  
+        pages.setStyleClass(styleClass);  
+        pages.setTheme(theme);  
+  
+    }  
+}

@@ -1,0 +1,1007 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+require 'rexml/document'
+require 'erb'
+require File.expand_path('../table.rb', __FILE__)
+require 'fileutils'
+require 'deprecated'
+require "dbi"
+
+module SshScaffold
+  class ModelXmlReader
+  	include REXML
+  	user_pwd_path = Dir::pwd
+  	@@projectName = "ngbnms"
+  	HOSTNAME = "192.168.88.2"
+  	DBNAME = "ngbnms"
+  	USERNAME = "nms"
+  	PASSWORD = "123456"
+
+	PROJECT_DIR = File.expand_path('../..',  __FILE__)
+	@model_dir = "#{@@projectName}/src/main/java/cn/#{@@projectName}/model/"
+	@dao_dir = "#{@@projectName}/src/main/java/cn/#{@@projectName}/dao/"
+	@dao_impl_dir = "#{@@projectName}/src/main/java/cn/#{@@projectName}/dao/impl/"
+	@service_dir = "#{@@projectName}/src/main/java/cn/#{@@projectName}/service/"
+	@service_impl_dir = "#{@@projectName}/src/main/java/cn/#{@@projectName}/service/impl/"
+	@action_dir = "#{@@projectName}/src/main/java/cn/#{@@projectName}/web/"
+	@dao_beans_xml = "#{@@projectName}/src/main/webapp/WEB-INF/config/dao-beans.xml"
+	@service_beans_xml = "#{@@projectName}/src/main/webapp/WEB-INF/config/service-beans.xml"
+	@action_beans_xml = "#{@@projectName}/src/main/webapp/WEB-INF/config/action-beans.xml"	
+	@hibernate_xml = "#{@@projectName}/src/main/webapp/WEB-INF/config/hibernate-conf.xml"
+	@struts_xml = "#{@@projectName}/src/main/resource/struts.xml"
+	#@action_method_dir = "#{@@projectName}/src/main/webapp/WEB-INF/config/struts/"
+	@action_method_dir = "#{@@projectName}/src/main/resource/"
+	@jsp_base_dir = "#{@@projectName}/src/main/webapp/WEB-INF/jsp/views/"
+	@dao_test_dir = "#{@@projectName}/src/test/java/dao/"
+	@@bean = nil
+  	@@modelName = nil
+
+	def self.getTableDef(table_name)
+		input = File.new("#{@model_dir}#{table_name}.hbm.xml","r")
+		doc = Document.new(input)
+		table_name = doc.elements["*/class"].attributes["name"].split(".").last
+		table_id = doc.elements["*/class/id"].attributes["name"]
+		table_id_type = doc.elements["*/class/id"].attributes["type"].split(".").last
+		columns = []
+		columns.push([table_id,table_id_type])
+		#解析表字段
+		doc.elements.each("*/class/property") do |node|
+			name = node.attributes["name"]
+			type = node.attributes["type"].split(".").last
+			type = "Date" if type == "Timestamp"
+			columns.push([name,type])
+		end
+		#解析表关系：多对一
+		doc.elements.each("*/class/many-to-one") do |node|
+			name = node.attributes["name"]
+			type = node.attributes["class"].split(".").last
+			columns.push([name,type])
+		end
+		#解析表关系：一对多
+		doc.elements.each("*/class/one-to-many") do |node|
+			name = node.attributes["name"]
+			type = node.attributes["class"].split(".").last
+			columns.push([name,type])
+		end
+		#解析表关系：多对多
+		doc.elements.each("*/class/set/many-to-many") do |node|
+			#name = node.attributes["name"]
+			classtype = node.attributes["class"].split(".").last
+			name = classtype+"s"	
+			type = "Set<#{classtype}>"
+			columns.push([name,type])
+		end
+		return Table.new(table_name,columns)
+	end	
+
+	def self.genaratorModel(className)
+		@@bean = getTableDef(className)
+		output = File.new("#{@model_dir}#{className}.java","w+")
+		File.open(File.expand_path("../template/model/modelClass.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		output.print template.result(binding)   
+		}
+		puts "创建 #{@model_dir}#{className}.java"
+	end
+
+	def self.genaratorDao(className)
+		output = File.new("#{@dao_dir}#{className}Dao.java","w+")
+		File.open(File.expand_path("../template/dao/daoClass.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		output.print template.result(binding)   
+		}
+		puts "创建 #{@dao_dir}#{className}Dao.java"
+	end
+
+	def self.genaratorDaoTestCase(className)
+		@@bean = getTableDef(className)
+		output = File.new("#{@dao_test_dir}#{className}DaoTest.java","w+")
+		File.open(File.expand_path("../template/dao/testDaoClass.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		output.print template.result(binding)   
+		}
+		puts "创建 #{@dao_test_dir}#{className}DaoTest.java"
+	end
+
+	def self.genaratorDaoImpl(className)
+		output = File.new("#{@dao_impl_dir}#{className}DaoImpl.java","w+")
+		File.open(File.expand_path("../template/dao/daoImplClass.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		output.print template.result(binding)   
+		}
+		puts "创建 #{@dao_impl_dir}#{className}DaoImpl.java"
+	end
+
+	def self.genaratorService(className)
+		output = File.new("#{@service_dir}#{className}Service.java","w+")
+		File.open(File.expand_path("../template/service/serviceClass.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		output.print template.result(binding)   
+		}
+		puts "创建 #{@service_dir}#{className}Service.java"
+	end
+
+	def self.genaratorServiceImpl(className)
+		output = File.new("#{@service_impl_dir}#{className}ServiceImpl.java","w+")
+		File.open(File.expand_path("../template/service/serviceImplClass.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		output.print template.result(binding)   
+		}
+		puts "创建 #{@service_impl_dir}#{className}ServiceImpl.java"
+	end
+
+	def self.genaratorAction(className)
+		output = File.new("#{@action_dir}#{className}Action.java","w+")
+		File.open(File.expand_path("../template/action/actionClass.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		output.print template.result(binding)   
+		}
+		puts "创建 #{@action_dir}#{className}Action.java"
+	end	
+
+	def self.genaratorDaoConfig(className)
+	  columns = []
+	  if File.exist?(@dao_beans_xml)
+      input = File.open(@dao_beans_xml)
+      doc = REXML::Document.new(input)
+      beansNode = doc.elements["beans"]
+      doc.elements.each("*/bean") do |node|
+        bId = node.attributes["id"]
+        bClass = node.attributes["class"].split(".").last
+        columns.push([bId,bClass])
+      end
+    end
+		columns.push(["#{@@bean.table_name}Dao","#{@@bean.table_name}DaoImpl"])
+		#去除重复元素
+		columns = columns.uniq
+		#p columns
+		output = File.new(@dao_beans_xml,"w+")
+		File.open(File.expand_path("../template/config/daoConfig.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		output.print template.result(binding)   
+		}
+		puts "创建 #{@dao_beans_xml}"
+	end
+
+	def self.genaratorServiceConfig(className)
+	  columns = []
+	  if File.exist?(@service_beans_xml)
+		  input = File.open(@service_beans_xml)
+		  doc = REXML::Document.new(input)
+		  beansNode = doc.elements["beans"]
+		  doc.elements.each("*/bean") do |node|
+			  bId = node.attributes["id"]
+			  bClass = node.attributes["class"].split(".").last
+			  columns.push([bId,bClass])
+		  end
+	  end
+		columns.push(["#{@@bean.table_name}Service","#{@@bean.table_name}ServiceImpl"])
+		#去除重复元素
+		columns = columns.uniq
+		#p columns
+		output = File.new(@service_beans_xml,"w+")
+		File.open(File.expand_path("../template/config/serviceConfig.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		output.print template.result(binding)   
+		}
+		puts "创建 #{@service_beans_xml}"
+	end	
+
+	def self.genaratorActionConfig(className)
+	  columns = []
+	  if File.exist?(@action_beans_xml)
+		  input = File.open(@action_beans_xml)
+		  doc = REXML::Document.new(input)
+		  beansNode = doc.elements["beans"]
+		  doc.elements.each("*/bean") do |node|
+			  bId = node.attributes["id"]
+			  bClass = node.attributes["class"].split(".").last
+			  columns.push([bId,bClass])
+			end
+		end
+		columns.push(["#{@@bean.table_name}Action","#{@@bean.table_name}Action"])
+		#去除重复元素
+		columns = columns.uniq
+		#p columns
+		output = File.new(@action_beans_xml,"w+")
+		File.open(File.expand_path("../template/config/actionConfig.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		output.print template.result(binding)   
+		}
+		puts "创建 #{@action_beans_xml}"
+	end
+
+	def self.genaratorHibernateConfig(className)
+	  columns = []
+	  if File.exist?(@hibernate_xml)
+		  input = File.open(@hibernate_xml)
+		  doc = REXML::Document.new(input)
+		  beansNode = doc.elements["beans"]
+		  doc.elements.each("*/bean/property/list/value") do |node|
+			  ormFile = node.text.split("/").last
+			  columns.push(ormFile) if ormFile.include?(".")
+		  end
+	  end
+		columns.push("#{@@bean.table_name}.hbm.xml")
+		#去除重复元素
+		columns = columns.uniq
+		output = File.new(@hibernate_xml,"w+")
+		File.open(File.expand_path("../template/config/hibernateConfig.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		output.print template.result(binding)   
+		}
+		puts "创建 #{@hibernate_xml}"
+	end
+
+	def self.genaratorStrutsConfig(className)
+		output = File.new("#{@action_method_dir}#{className}-struts.xml","w+")
+		File.open(File.expand_path("../template/config/strutsConfig.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		output.print template.result(binding)
+		}
+		puts "创建 #{@action_method_dir}#{className}-struts.xml"
+		columns = []
+		if File.exist?(@struts_xml)
+		  input = File.open(@struts_xml)
+		  doc = REXML::Document.new(input)
+		  doc.elements.each("*/include") do |node|
+			  oldFile = node.attributes["file"]
+			  columns.push(oldFile) if oldFile.include?(".")
+		  end
+	  end
+		columns.push("#{className}-struts.xml")
+		#去除重复元素
+		columns = columns.uniq
+		addoutput = File.new(@struts_xml,"w+")
+		File.open(File.expand_path("../template/config/strutsBaseConfig.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		addoutput.print template.result(binding)   
+		}
+		puts "更新 #{@struts_xml}"
+	end
+
+	#TODO:需要添加前端jsp模板
+	def self.genaratorJspScaffold(className)
+		className = className[0].downcase << className[1,className.length]
+		if(File.exist?("#{@jsp_base_dir}#{className}"))
+  			puts "目录已经存在！"
+ 		else
+ 			Dir.mkdir("#{@jsp_base_dir}#{className}")
+			puts "创建 #{@jsp_base_dir}#{className}"
+ 		end
+ 		jsp_list = File.new("#{@jsp_base_dir}#{className}/#{className}List.jsp","w+")
+ 		jsp_list.print("<%@ page contentType='text/html; charset=UTF-8'%>
+<%@ taglib uri='/struts-tags' prefix='s'%>
+")
+		File.open(File.expand_path("../template/view/jspList.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		jsp_list.print template.result(binding)   
+		}
+		puts "创建 #{@jsp_base_dir}#{className}/#{className}List.jsp"
+		jsp_view = File.new("#{@jsp_base_dir}#{className}/#{className}.jsp","w+")
+		jsp_view.print("<%@ page contentType='text/html; charset=UTF-8'%>
+<%@ taglib uri='/struts-tags' prefix='s'%>
+")		
+		File.open(File.expand_path("../template/view/jspView.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		jsp_view.print template.result(binding)   
+		}
+		puts "创建 #{@jsp_base_dir}#{className}/#{className}.jsp"
+		jsp_new = File.new("#{@jsp_base_dir}#{className}/#{className}New.jsp","w+")
+		jsp_new.print("<%@ page contentType='text/html; charset=UTF-8'%>
+<%@ taglib uri='/struts-tags' prefix='s'%>
+")
+		File.open(File.expand_path("../template/view/jspNew.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		jsp_new.print template.result(binding)   
+		}
+
+		puts "创建 #{@jsp_base_dir}#{className}/#{className}New.jsp"
+		jsp_edit = File.new("#{@jsp_base_dir}#{className}/#{className}Edit.jsp","w+")
+		jsp_edit.print("<%@ page contentType='text/html; charset=UTF-8'%>
+<%@ taglib uri='/struts-tags' prefix='s'%>
+")
+		File.open(File.expand_path("../template/view/jspEdit.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		jsp_edit.print template.result(binding)   
+		}
+		puts "创建 #{@jsp_base_dir}#{className}/#{className}Eidt.jsp"
+	end
+
+	def self.searchModelName()
+		puts "可用于生成脚手架的ModelName如下:"
+		Dir.glob("#{@model_dir}*.hbm.xml").each do | file |
+			puts file.split("/").last.split(".").first
+		end
+	end
+
+	def self.genaratorAllDaoTestCase()
+		Dir.glob("#{@model_dir}*.hbm.xml").each do | file |
+			 genaratorDaoTestCase(file.split("/").last.split(".").first)
+		end
+	end
+
+	def self.genaratorProject(projectName)
+		@@projectName = projectName
+		#后台目录结构
+		model_dir = "#{projectName}/src/main/java/cn/#{projectName}/model"
+		dao_dir = "#{projectName}/src/main/java/cn/#{projectName}/dao"
+		dao_impl_dir = "#{projectName}/src/main/java/cn/#{projectName}/dao/impl"
+		service_dir = "#{projectName}/src/main/java/cn/#{projectName}/service"
+		service_impl_dir = "#{projectName}/src/main/java/cn/#{projectName}/service/impl"
+		action_dir = "#{projectName}/src/main/java/cn/#{projectName}/web"
+		action_config_dir = "#{projectName}/src/main/resource"
+		util_dir = "#{projectName}/src/main/java/cn/#{projectName}/util"
+		exception_dir = "#{projectName}/src/main/java/cn/#{projectName}/exception"
+		framework_dir = "#{projectName}/src/main/java/cn/#{projectName}/framework"
+		#前端目录结构
+	
+		css_dir = "#{projectName}/src/main/webapp/css"
+		images_dir = "#{projectName}/src/main/webapp/images"
+		js_dir = "#{projectName}/src/main/webapp/js"
+		webinf_dir = "#{projectName}/src/main/webapp/WEB-INF"
+		jsp_base_dir = "#{webinf_dir}/jsp/views"
+		jsp_layout_dir = "#{webinf_dir}/jsp/layout"
+		config_dir = "#{webinf_dir}/config"
+		#struts_config_dir = "#{config_dir}/struts"
+
+		#单元测试目录结构
+		test_dao_dir = "#{projectName}/src/test/java/dao"
+		test_util_dir = "#{projectName}/src/test/java/util"
+		test_resource_dir = "#{projectName}/src/test/java/resource"
+
+		#TODO:生成项目目录结构、以及必要的资源文件
+ 		FileUtils.makedirs("#{projectName}")
+		puts "创建 #{projectName}"
+		FileUtils.makedirs("#{model_dir}")
+		puts "创建 #{model_dir}"
+ 		FileUtils.makedirs("#{dao_dir}")
+		puts "创建 #{dao_dir}"
+		FileUtils.makedirs("#{dao_impl_dir}")
+		puts "创建 #{dao_impl_dir}"
+ 		FileUtils.makedirs("#{service_dir}")
+		puts "创建 #{service_dir}"
+		FileUtils.makedirs("#{service_impl_dir}")
+		puts "创建 #{service_impl_dir}"
+ 		FileUtils.makedirs("#{action_dir}")
+		puts "创建 #{action_dir}"
+		FileUtils.makedirs("#{action_config_dir}")
+		puts "创建 #{action_config_dir}"
+		FileUtils.makedirs("#{util_dir}")
+		puts "创建 #{util_dir}"
+ 		FileUtils.makedirs("#{exception_dir}")
+		puts "创建 #{exception_dir}"
+
+ 		FileUtils.makedirs("#{framework_dir}")
+		puts "创建 #{framework_dir}"
+
+ 		FileUtils.makedirs("#{css_dir}")
+		puts "创建 #{css_dir}"
+		FileUtils.makedirs("#{images_dir}")
+		puts "创建 #{images_dir}"
+ 		FileUtils.makedirs("#{js_dir}")
+		puts "创建 #{js_dir}"
+		FileUtils.makedirs("#{jsp_base_dir}")
+		puts "创建 #{jsp_base_dir}"
+		FileUtils.makedirs("#{jsp_layout_dir}")
+		puts "创建 #{jsp_layout_dir}"
+ 		FileUtils.makedirs("#{config_dir}")
+		puts "创建 #{config_dir}"
+		#FileUtils.makedirs("#{struts_config_dir}")
+		#puts "创建 #{struts_config_dir}"
+
+		FileUtils.makedirs("#{test_dao_dir}")
+		puts "创建 #{test_dao_dir}"
+		FileUtils.makedirs("#{test_util_dir}")
+		puts "创建 #{test_util_dir}"
+		FileUtils.makedirs("#{test_resource_dir}")
+		puts "创建 #{test_resource_dir}"
+		
+		#创建applicationContext配置文件
+		appCtxConfig = File.new("#{config_dir}/applicationContext.xml","w+")
+		File.open(File.expand_path("../template/config/applicationContext.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		appCtxConfig.print template.result(binding)
+		}	
+		puts "创建 #{config_dir}/applicationContext.xml"
+
+		columns = []
+		#创建hibernate配置文件
+		hibernateXmlConfig = File.new("#{config_dir}/hibernate-conf.xml","w+")
+		File.open(File.expand_path("../template/config/hibernateConfig.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		hibernateXmlConfig.print template.result(binding)   
+		}
+		puts "创建 #{config_dir}/hibernate-conf.xml"
+
+		#创建struts配置文件
+		strutsXmlConfig = File.new("#{action_config_dir}/struts.xml","w+")
+		File.open(File.expand_path("../template/config/strutsBaseConfig.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		strutsXmlConfig.print template.result(binding)   
+		}
+		puts "创建 #{action_config_dir}/struts.xml"
+
+		#创建actionBean配置文件
+		actionXmlConfig = File.new("#{config_dir}/action-beans.xml","w+")
+		File.open(File.expand_path("../template/config/actionConfig.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		actionXmlConfig.print template.result(binding)   
+		}
+		puts "创建 #{config_dir}/action-beans.xml"
+
+		#创建serviceBean配置文件
+		serviceXmlConfig = File.new("#{config_dir}/service-beans.xml","w+")
+		File.open(File.expand_path("../template/config/serviceConfig.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		serviceXmlConfig.print template.result(binding)   
+		}
+		puts "创建 #{config_dir}/service-beans.xml"
+
+		daoXmlConfig = File.new("#{config_dir}/dao-beans.xml","w+")
+		File.open(File.expand_path("../template/config/daoConfig.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		daoXmlConfig.print template.result(binding)   
+		}
+		puts "创建 #{config_dir}/dao-beans.xml"
+
+		#创建缺省的web配置文件
+		webConfig = File.new("#{webinf_dir}/web.xml","w+")
+		File.open(File.expand_path("../template/config/webConfig.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		webConfig.print template.result(binding)
+		}
+		puts "创建 #{webinf_dir}/web.xml"
+    
+    	#创建项目pom配置文件
+		pomConfig = File.new("#{projectName}/pom.xml","w+")
+		File.open(File.expand_path("../template/config/pomConfig.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		pomConfig.print template.result(binding)
+		}
+		puts "创建 #{projectName}/pom.xml"
+
+    	#创建UrlRewrite配置文件
+		urlConfig = File.new("#{webinf_dir}/urlrewrite.xml","w+")
+		File.open(File.expand_path("../template/config/urlConfig.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		urlConfig.print template.result(binding)
+		}
+		puts "创建 #{webinf_dir}/urlrewrite.xml"
+
+    	#创建log4j配置文件
+		logConfig = File.new("#{webinf_dir}/log4j.properties","w+")
+		File.open(File.expand_path("../template/other/log4j.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		logConfig.print template.result(binding)
+		}	
+		puts "创建 #{webinf_dir}/log4j.properties"
+		
+		#创建db链接文件
+		dbConfig = File.new("#{config_dir}/#{projectName}_configure.properties","w+")
+		File.open(File.expand_path("../template/config/db_config_properties.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		dbConfig.print template.result(binding)
+		}	
+		puts "创建 #{config_dir}/#{projectName}_configure.properties"
+		
+		#创建db描述文件
+		dbBeansConfig = File.new("#{config_dir}/db-beans.xml","w+")
+		File.open(File.expand_path("../template/config/dbConfig.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		dbBeansConfig.print template.result(binding)
+		}	
+		puts "创建 #{config_dir}/db-beans.xml"
+		
+		#创建Struts-tags配置文件
+		strutsTagsConfig = File.new("#{webinf_dir}/struts-tags.tld","w+")
+		File.open(File.expand_path("../template/other/struts-tags.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		strutsTagsConfig.print template.result(binding)
+		}	
+		puts "创建 #{webinf_dir}/struts-tags.tld"
+
+		#创建Pages-tags配置文件
+		pagesTagsConfig = File.new("#{webinf_dir}/pages-tags.tld","w+")
+		File.open(File.expand_path("../template/other/pages-tags.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		pagesTagsConfig.print template.result(binding)
+		}	
+		puts "创建 #{webinf_dir}/pages-tags.tld"
+		
+		#创建系统框架类文件
+		abstractManagerFile = File.new("#{framework_dir}/AbstractManager.java","w+")
+		File.open(File.expand_path("../template/framework/abstractManager.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		abstractManagerFile.print template.result(binding)
+		}	
+		puts "创建 #{framework_dir}/AbstractManager.java"
+		
+		#创建分页类文件
+		pageFetchFile = File.new("#{framework_dir}/PageFetch.java","w+")
+		File.open(File.expand_path("../template/framework/pageFetch.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		pageFetchFile.print template.result(binding)
+		}	
+		puts "创建 #{framework_dir}/PageFetch.java"
+
+		pageTagFile = File.new("#{framework_dir}/PageTag.java","w+")
+		File.open(File.expand_path("../template/framework/pageTag.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		pageTagFile.print template.result(binding)
+		}	
+		puts "创建 #{framework_dir}/PageTag.java"
+
+		pagesFile = File.new("#{framework_dir}/Pages.java","w+")
+		File.open(File.expand_path("../template/framework/pages.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		pagesFile.print template.result(binding)
+		}	
+		puts "创建 #{framework_dir}/Pages.java"
+
+		baseActionFile = File.new("#{framework_dir}/BaseAction.java","w+")
+		File.open(File.expand_path("../template/framework/baseAction.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		baseActionFile.print template.result(binding)
+		}	
+		puts "创建 #{framework_dir}/BaseAction.java"
+
+		springContextUtilFile = File.new("#{framework_dir}/SpringContextUtil.java","w+")
+		File.open(File.expand_path("../template/framework/springContextUtil.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		springContextUtilFile.print template.result(binding)
+		}	
+		puts "创建 #{framework_dir}/SpringContextUtil.java"
+
+		abstractManagerFile = File.new("#{framework_dir}/AbstractManager.java","w+")
+		File.open(File.expand_path("../template/framework/abstractManager.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		abstractManagerFile.print template.result(binding)
+		}	
+		puts "创建 #{framework_dir}/AbstractManager.java"
+
+		aroundAdviceInterceptorFile = File.new("#{framework_dir}/AroundAdviceInterceptor.java","w+")
+		File.open(File.expand_path("../template/framework/aroundAdviceInterceptor.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		aroundAdviceInterceptorFile.print template.result(binding)
+		}	
+		puts "创建 #{framework_dir}/AroundAdviceInterceptor.java"
+
+
+		cusContextLoaderListenerFile = File.new("#{framework_dir}/CustomerContextLoaderListener.java","w+")
+		File.open(File.expand_path("../template/framework/customerContextLoaderListener.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		cusContextLoaderListenerFile.print template.result(binding)
+		}	
+		puts "创建 #{framework_dir}/CustomerContextLoaderListener.java"
+
+		userInfoFile = File.new("#{framework_dir}/UserInfo.java","w+")
+		File.open(File.expand_path("../template/framework/userInfo.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		userInfoFile.print template.result(binding)
+		}	
+		puts "创建 #{framework_dir}/UserInfo.java"
+
+		toolsFile = File.new("#{util_dir}/Tools.java","w+")
+		File.open(File.expand_path("../template/framework/tools.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		toolsFile.print template.result(binding)
+		}	
+		puts "创建 #{util_dir}/Tools.java"
+
+		baseConstantFile = File.new("#{util_dir}/BaseConstant.java","w+")
+		File.open(File.expand_path("../template/util/baseConstant.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		baseConstantFile.print template.result(binding)
+		}	
+		puts "创建 #{util_dir}/BaseConstant.java"
+
+		actionToolsFile = File.new("#{util_dir}/ActionTools.java","w+")
+		File.open(File.expand_path("../template/util/actionTools.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		actionToolsFile.print template.result(binding)
+		}	
+		puts "创建 #{util_dir}/ActionTools.java"
+
+		dateToolsFile = File.new("#{util_dir}/DateTools.java","w+")
+		File.open(File.expand_path("../template/util/dateTools.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		dateToolsFile.print template.result(binding)
+		}	
+		puts "创建 #{util_dir}/DateTools.java"
+
+		#创建系统基础领域模型配置文件
+		functionHbmFile = File.new("#{model_dir}/SysFunction.hbm.xml","w+")
+		File.open(File.expand_path("../template/model/domain_model_config/SysFunction.hbm.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		functionHbmFile.print template.result(binding)
+		}	
+		puts "创建 #{model_dir}/SysFunction.hbm.xml"
+
+		roleHbmFile = File.new("#{model_dir}/SysRole.hbm.xml","w+")
+		File.open(File.expand_path("../template/model/domain_model_config/SysRole.hbm.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		roleHbmFile.print template.result(binding)
+		}	
+		puts "创建 #{model_dir}/SysRole.hbm.xml"
+
+		operatorHbmFile = File.new("#{model_dir}/SysOperator.hbm.xml","w+")
+		File.open(File.expand_path("../template/model/domain_model_config/SysOperator.hbm.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		operatorHbmFile.print template.result(binding)
+		}	
+		puts "创建 #{model_dir}/SysOperator.hbm.xml"
+
+		operatorLogHbmFile = File.new("#{model_dir}/SysOperatorLog.hbm.xml","w+")
+		File.open(File.expand_path("../template/model/domain_model_config/SysOperatorLog.hbm.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		operatorLogHbmFile.print template.result(binding)
+		}	
+		puts "创建 #{model_dir}/SysOperatorLog.hbm.xml"
+
+		dictHbmFile = File.new("#{model_dir}/SysDict.hbm.xml","w+")
+		File.open(File.expand_path("../template/model/domain_model_config/SysDict.hbm.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		dictHbmFile.print template.result(binding)
+		}	
+		puts "创建 #{model_dir}/SysDict.hbm.xml"
+		
+		#创建异常类文件
+		businessExceptionFile = File.new("#{exception_dir}/BusinessException.java","w+")
+		File.open(File.expand_path("../template/exception/BusinessException.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		businessExceptionFile.print template.result(binding)
+		}	
+		puts "创建 #{exception_dir}/BusinessException.java"
+		
+		#创建数据访问异常类文件
+		dataAccessExceptionFile = File.new("#{exception_dir}/DataAccessException.java","w+")
+		File.open(File.expand_path("../template/exception/DataAccessException.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		dataAccessExceptionFile.print template.result(binding)
+		}	
+		puts "创建 #{exception_dir}/DataAccessException.java"
+
+		#创建数据访问异常类文件
+		adminNoneSessionExceptionFile = File.new("#{exception_dir}/AdminNoneSessionFoundException.java","w+")
+		File.open(File.expand_path("../template/exception/AdminNoneSessionFoundException.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		adminNoneSessionExceptionFile.print template.result(binding)
+		}	
+		puts "创建 #{exception_dir}/AdminNoneSessionFoundException.java"
+
+		#创建数据访问异常类文件
+		noneSessionExceptionFile = File.new("#{exception_dir}/NoneSessionFoundException.java","w+")
+		File.open(File.expand_path("../template/exception/NoneSessionFoundException.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		noneSessionExceptionFile.print template.result(binding)
+		}	
+		puts "创建 #{exception_dir}/NoneSessionFoundException.java"
+
+		#创建数据访问异常类文件
+		unAuthExceptionFile = File.new("#{exception_dir}/UnAuthenrizationException.java","w+")
+		File.open(File.expand_path("../template/exception/UnAuthenrizationException.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		unAuthExceptionFile.print template.result(binding)
+		}	
+		puts "创建 #{exception_dir}/UnAuthenrizationException.java"
+
+		#创建数据访问异常类文件
+		unHandleExceptionFile = File.new("#{exception_dir}/UnHandledException.java","w+")
+		File.open(File.expand_path("../template/exception/UnHandledException.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		unHandleExceptionFile.print template.result(binding)
+		}	
+		puts "创建 #{exception_dir}/UnHandledException.java"
+
+		#创建公共Dao类文件
+		commonDaoFile = File.new("#{dao_dir}/CommonDao.java","w+")
+		File.open(File.expand_path("../template/dao/commonDao.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		commonDaoFile.print template.result(binding)
+		}	
+		puts "创建 #{dao_dir}/CommonDao.java"
+
+		#创建公共DaoImpl类文件
+		commonDaoImplFile = File.new("#{dao_dir}/CommonDaoImpl.java","w+")
+		File.open(File.expand_path("../template/dao/commonDaoImpl.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		commonDaoImplFile.print template.result(binding)
+		}	
+		puts "创建 #{dao_impl_dir}/CommonDaoImpl.java"
+
+		#创建公共service类文件
+		commonServiceFile = File.new("#{service_dir}/CommonService.java","w+")
+		File.open(File.expand_path("../template/service/commonService.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		commonServiceFile.print template.result(binding)
+		}	
+		puts "创建 #{service_dir}/CommonService.java"
+
+		#创建公共serviceImpl类文件
+		commonServiceImplFile = File.new("#{service_impl_dir}/CommonServiceImpl.java","w+")
+		File.open(File.expand_path("../template/service/commonServiceImpl.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		commonServiceImplFile.print template.result(binding)
+		}	
+		puts "创建 #{service_impl_dir}/CommonServiceImpl.java"
+
+		#创建前端开发CSS框架bootstrap
+		bsCssFile = File.new("#{css_dir}/bootstrap.min.css","w+")
+		File.open(File.expand_path("../template/3rd_res/bootstrap/bootstrap_css_v3.3.5.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		bsCssFile.print template.result(binding)
+		}	
+		puts "创建 #{css_dir}/bootstrap.min.css"
+
+		#创建前端布局CSS
+		layOutCssFile = File.new("#{css_dir}/layout.css","w+")
+		File.open(File.expand_path("../template/view/layout.css.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		layOutCssFile.print template.result(binding)
+		}	
+		puts "创建 #{css_dir}/layout.css"
+
+		bsJsFile = File.new("#{js_dir}/bootstrap.min.js","w+")
+		File.open(File.expand_path("../template/3rd_res/bootstrap/bootstrap_js_v3.3.5.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		bsJsFile.print template.result(binding)
+		}	
+		puts "创建 #{js_dir}/bootstrap.min.js"
+
+		bsPageJsFile = File.new("#{js_dir}/bootstrap-paginator.js","w+")
+		File.open(File.expand_path("../template/3rd_res/bootstrap/bootstrap-paginator.js.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		bsPageJsFile.print template.result(binding)
+		}	
+		puts "创建 #{js_dir}/bootstrap-paginator.js"
+
+		jqueryJsFile = File.new("#{js_dir}/jquery.min.js","w+")
+		File.open(File.expand_path("../template/3rd_res/jquery/jquery_v2.1.4.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		jqueryJsFile.print template.result(binding)
+		}	
+		puts "创建 #{js_dir}/jquery.min.js"
+
+		jqueryFormFile = File.new("#{js_dir}/jquery.form.js","w+")
+		File.open(File.expand_path("../template/3rd_res/jquery/jquery.form.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		jqueryJsFile.print template.result(binding)
+		}	
+		puts "创建 #{js_dir}/jquery.form.js"
+
+		pageFetchJsFile = File.new("#{js_dir}/pageFetch.js","w+")
+		File.open(File.expand_path("../template/other/pageFetch.js.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		pageFetchJsFile.print template.result(binding)
+		}	
+		puts "创建 #{js_dir}/pageFetch.js"
+
+		jsp_layout_header = File.new("#{jsp_layout_dir}/header.jsp","w+")
+ 		jsp_layout_header.print("<%@ page contentType='text/html; charset=UTF-8'%>
+<%@ taglib uri='/struts-tags' prefix='s'%>")
+		File.open(File.expand_path("../template/view/header.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		jsp_layout_header.print template.result(binding)   
+		}
+		puts "创建 #{jsp_layout_dir}/header.jsp"
+
+		jsp_layout_left = File.new("#{jsp_layout_dir}/left.jsp","w+")
+ 		jsp_layout_left.print("<%@ page contentType='text/html; charset=UTF-8'%>
+<%@ taglib uri='/struts-tags' prefix='s'%>")
+		File.open(File.expand_path("../template/view/left.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		jsp_layout_left.print template.result(binding)   
+		}
+		puts "创建 #{jsp_layout_dir}/left.jsp"
+
+		jsp_layout_page = File.new("#{jsp_layout_dir}/page.jsp","w+")
+ 		jsp_layout_page.print("<%@ page contentType='text/html; charset=UTF-8'%>
+<%@ taglib uri='/struts-tags' prefix='s'%>
+<%@ taglib uri='/WEB-INF/pages-tags.tld' prefix='pages' %> ")
+		File.open(File.expand_path("../template/view/page.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		jsp_layout_page.print template.result(binding)   
+		}
+		puts "创建 #{jsp_layout_dir}/page.jsp"
+
+		jsp_layout_footer = File.new("#{jsp_layout_dir}/footer.jsp","w+")
+ 		jsp_layout_footer.print("<%@ page contentType='text/html; charset=UTF-8'%>
+<%@ taglib uri='/struts-tags' prefix='s'%>
+<%@ taglib uri='/WEB-INF/pages-tags.tld' prefix='pages' %> ")
+		File.open(File.expand_path("../template/view/footer.erb", __FILE__)) { |fh| 
+	   		template = ERB.new(fh.read) 
+	   		jsp_layout_footer.print template.result(binding)   
+		}
+		puts "创建 #{jsp_layout_dir}/footer.jsp"
+
+	end
+	
+	#mysql column type to java attr type hashmap
+    @@columns_to_attr_type = {
+       "bit"            => "java.lang.Boolean",
+       "tinyint"        => "java.lang.Integer",
+       "smallint"       => "java.lang.Integer",
+       "mediumint"      => "java.lang.Integer",
+       "int"            => "java.lang.Integer",
+       "integer"        => "java.lang.Integer",
+       "bigint"         => "java.math.BigInteger",
+       "real"           => "java.lang.Integer",
+       "double"         => "java.lang.Double",
+       "float"          => "java.lang.Float",
+       "decimal"        => "java.math.BigDecimal",
+       "numeric"        => "java.lang.Long",
+       "char"           => "java.sql.Timestamp",
+       "varchar"        => "java.lang.String",
+       "binary"         => "java.lang.Long",
+       "varbinary"      => "java.lang.Long",
+       "date"           => "java.sql.Date",
+       "time"           => "java.sql.Time",
+       "datetime"       => "java.sql.Timestamp",
+       "timestamp"      => "java.sql.Timestamp",
+       "year"           => "java.sql.Date",
+       "tinyblob"       => "java.lang.String",
+       "blob"           => "java.lang.byte[]",
+       "mediumblob"     => "java.lang.String",
+       "longblob"       => "java.lang.String",
+       "tinytext"       => "java.lang.Long",
+       "text"           => "java.lang.String",
+       "mediumtext"     => "java.lang.String",
+       "longtext"       => "java.sql.Timestamp",
+       "enum"           => "java.lang.String",
+       "set"            => "java.lang.Long"
+    }
+
+
+    def self.getTableDefBean(dbh,table_name)
+       columns = []
+       ts = dbh.execute("desc " + table_name)
+       ts.each do |row| 
+            #TODO:row[1]字段类型转换
+            java_arrt_type = @@columns_to_attr_type["#{row[1].split('(').first}"]
+            arrName = row[0].gsub(/^.|_./){ |match| match.size>1?match[1].upcase : match.upcase }
+            columns.push([row[0],java_arrt_type,arrName])
+       end
+       #puts columns
+       return Table.new(table_name,columns)
+    end
+
+    def self.createModelHbmFile(projectName)
+       begin
+            # connect to the MySQL server
+            dbh = DBI.connect("DBI:Mysql:#{DBNAME}:#{HOSTNAME}", USERNAME, PASSWORD)
+            sth = dbh.execute("show tables")
+            sth.each do |row|
+                 #首字母大写转换 
+                 @@modelName = row[0].gsub(/^.|_./){ |match| match.size>1?match[1].upcase : match.upcase }
+                 output = File.new("src/main/java/cn/#{@@projectName}/model/#{@@modelName}.hbm.xml","w+")
+                 @@bean = getTableDefBean(dbh,row[0])
+                 File.open(File.expand_path("../template/config/modelHbmConfig.erb", __FILE__)) { |fh| 
+                 template = ERB.new(fh.read) 
+                 output.print template.result(binding)   
+            }
+            puts "创建 #{@@modelName}.hbm.xml"
+            end
+            sth.finish
+       rescue DBI::DatabaseError => e
+            puts "An error occurred"
+            puts "Error code:    #{e.err}"
+            puts "Error message: #{e.errstr}"
+       ensure
+            # disconnect from server
+            dbh.disconnect if dbh
+       end
+    end
+
+	def self.genaratorAll(className)		
+		begin
+			File.new("#{@model_dir}#{className}.hbm.xml")
+		rescue Exception => e
+			puts "找不到文件 #{@model_dir}#{className}.hbm.xml"
+			puts "请确认你输入的参数在下列中:"
+			Dir.glob("#{@model_dir}*.hbm.xml").each do | file |
+				puts file.split("/").last.split(".").first
+			end
+			return
+		end
+		genaratorModel(className)
+		genaratorDao(className)
+		genaratorDaoImpl(className)
+		genaratorService(className)	
+		genaratorServiceImpl(className)
+		genaratorAction(className)
+		genaratorDaoConfig(className)
+		genaratorServiceConfig(className)
+		genaratorActionConfig(className)
+		genaratorHibernateConfig(className)
+		genaratorStrutsConfig(className)
+		genaratorJspScaffold(className)
+	end
+
+	def self.removeAll(className)
+		begin
+			File.new("#{@model_dir}#{className}.java")
+		rescue Exception => e
+			puts "找不到文件 #{@model_dir}#{className}.java"
+			puts "请确认你输入的参数在下列中:"
+			Dir.glob("#{@model_dir}*.java").each do | file |
+				puts file.split("/").last.split(".").first
+			end
+			return
+		end
+		File.delete("#{@model_dir}#{className}.java")
+		puts "删除 #{@model_dir}#{className}.java"
+		File.delete("#{@dao_dir}#{className}Dao.java")
+		puts "删除 #{@dao_dir}#{className}Dao.java"
+		File.delete("#{@dao_impl_dir}#{className}DaoImpl.java")
+		puts "删除 #{@dao_impl_dir}#{className}DaoImpl.java"
+		File.delete("#{@service_dir}#{className}Service.java")
+		puts "删除 #{@service_dir}#{className}Service.java"
+		File.delete("#{@action_dir}#{className}Action.java")
+		puts "删除 #{@action_dir}#{className}Action.java"
+		File.delete("#{@action_method_dir}#{className}-struts.xml")
+		puts "删除 #{@action_method_dir}#{className}-struts.xml"
+		File.delete("#{@service_impl_dir}#{className}ServiceImpl.java")
+		puts "删除 #{@service_impl_dir}#{className}ServiceImpl.java"
+		File.delete("#{@jsp_base_dir}#{className}/#{className}List.jsp")
+		puts "删除 #{@jsp_base_dir}#{className}/#{className}List.jsp"
+		File.delete("#{@jsp_base_dir}#{className}/#{className}New.jsp")
+		puts "删除 #{@jsp_base_dir}#{className}/#{className}New.jsp"
+		File.delete("#{@jsp_base_dir}#{className}/#{className}.jsp")
+		puts "删除 #{@jsp_base_dir}#{className}/#{className}.jsp"
+		File.delete("#{@jsp_base_dir}#{className}/#{className}Edit.jsp")
+		puts "删除 #{@jsp_base_dir}#{className}/#{className}Edit.jsp"
+		Dir.delete("#{@jsp_base_dir}#{className}")
+		puts "删除 #{@jsp_base_dir}#{className}"
+	end
+  end
+
+end
+
+def help_info()
+	puts "ssh_scaffold version 1.1.1"
+	puts "usage: ssh_scaffold init projectName 初始化项目"
+	puts "       ssh_scaffold create [all|model|dao|service|action|view] modelName"
+	puts "       ssh_scaffold delete modelName    删除modelName相关的文件，威力巨大，谨慎使用"
+	puts "       ssh_scaffold search    查找可用于生成脚手架的modelName"
+	puts "       ssh_scaffold test    生成项目的单元测试用例"
+	puts "       ssh_scaffold db    生成项目的数据库模型配置文件"
+end
+
+if ARGV[0] 
+	case ARGV[0]
+		when "-h"
+			help_info()
+		when "init"
+			SshScaffold::ModelXmlReader.genaratorProject(ARGV[1])
+	 	when "create"
+	 		case ARGV[1]
+		 		when "all"
+		 			SshScaffold::ModelXmlReader.genaratorAll(ARGV[2])
+		 		when "model"
+		 			SshScaffold::ModelXmlReader.genaratorModel(ARGV[2])
+		 		when "dao"
+		 			SshScaffold::ModelXmlReader.genaratorDao(ARGV[2])
+		 		when "service"
+		 			SshScaffold::ModelXmlReader.genaratorService(ARGV[2])
+		 		when "action"
+		 			SshScaffold::ModelXmlReader.genaratorAction(ARGV[2])
+		 		when "view"
+		 			SshScaffold::ModelXmlReader.genaratorJspScaffold(ARGV[2])
+		 		else 
+				 	help_info()
+	 		end	
+	 	when "delete"
+	 		SshScaffold::ModelXmlReader.removeAll(ARGV[1])
+	 	when "search"
+	 		SshScaffold::ModelXmlReader.searchModelName()
+	 	when "test"
+	 		SshScaffold::ModelXmlReader.genaratorAllDaoTestCase()
+	 	when "db"
+	 	  SshScaffold::ModelXmlReader.createModelHbmFile(ARGV[1])
+	 	else 
+			help_info()		
+	end
+else
+	help_info()
+end

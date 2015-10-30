@@ -1,0 +1,63 @@
+package cn.<%=@@projectName%>.exception;
+
+
+public class DataAccessException extends BusinessException {
+
+	/**
+	 * serialVersionUID
+	 */
+	private static final long serialVersionUID = 1L;
+
+	private String key = null;
+
+	private String[] args = null;
+
+	public DataAccessException() {
+		super();
+	}
+
+	public DataAccessException(String key) {
+		super();
+		this.key = key;
+	}
+
+	public DataAccessException(String key, String[] args) {
+		super();
+		this.key = key;
+		this.args = args;
+	}
+
+	/**
+	 * @return Returns the args.
+	 */
+	@Override
+	public String[] getArgs() {
+		return this.args;
+	}
+
+	/**
+	 * @param args
+	 *            The args to set.
+	 */
+	@Override
+	public void setArgs(String[] args) {
+		this.args = args;
+	}
+
+	/**
+	 * @return Returns the key.
+	 */
+	@Override
+	public String getKey() {
+		return this.key;
+	}
+
+	/**
+	 * @param key
+	 *            The key to set.
+	 */
+	@Override
+	public void setKey(String key) {
+		this.key = key;
+	}
+}

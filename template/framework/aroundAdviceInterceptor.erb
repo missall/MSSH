@@ -1,0 +1,270 @@
+package cn.<%=@@projectName%>.framework;
+
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
+
+import org.apache.commons.lang.xwork.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.struts2.StrutsStatics;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import cn.<%=@@projectName%>.exception.BusinessException;
+import cn.<%=@@projectName%>.exception.UnAuthenrizationException;
+import cn.<%=@@projectName%>.exception.NoneSessionFoundException;
+import cn.<%=@@projectName%>.exception.AdminNoneSessionFoundException;
+import cn.<%=@@projectName%>.exception.UnHandledException;
+import cn.<%=@@projectName%>.model.SysFunction;
+import cn.<%=@@projectName%>.model.SysOperator;
+import cn.<%=@@projectName%>.model.SysOperatorLog;
+import cn.<%=@@projectName%>.service.SysFunctionService;
+import cn.<%=@@projectName%>.service.SysOperatorLogService;
+import cn.<%=@@projectName%>.service.SysOperatorService;
+import cn.<%=@@projectName%>.util.ActionTools;
+import cn.<%=@@projectName%>.util.BaseConstant;
+import cn.<%=@@projectName%>.util.DateTools;
+
+import com.opensymphony.xwork2.ActionContext;
+import com.opensymphony.xwork2.ActionInvocation;
+import com.opensymphony.xwork2.interceptor.Interceptor;
+
+/**
+ * 权限认证
+ * 
+ * 
+ */
+public class AroundAdviceInterceptor implements Interceptor {
+    
+    private static final long serialVersionUID = 7217721174550801451L;
+
+    private Log logger = LogFactory.getLog(AroundAdviceInterceptor.class);
+    
+    @Autowired
+    private SysFunctionService sysFunctionService;
+    @Autowired
+    private SysOperatorLogService sysOperatorLogService;
+    @Autowired
+    private SysOperatorService operatorService;
+
+    @Override
+    public String intercept(ActionInvocation invocation) throws Exception {
+        ActionContext actionContext = invocation.getInvocationContext();
+        HttpServletRequest request = (HttpServletRequest) actionContext
+                .get(StrutsStatics.HTTP_REQUEST);
+        HttpSession session = request.getSession();
+        String className = invocation.getAction().toString();
+        // 该请求是否需要验证
+        boolean isAuth = filterRule(className);
+        // 取得操作方法名
+        String methodName = ActionTools.getMethodName(request);
+        // 过滤不须做日志操作的动作
+        boolean isLog = filterLogRule(className, methodName);
+        
+        UserInfo userInfo = null;
+        SysFunction function = new SysFunction();
+        userInfo = (UserInfo) session.getAttribute(BaseConstant.getInstance().CURRENT_USER);
+        // 2:validate the operator privilege
+        Long identity = getCurrentUserIdentity(request);
+        if (isAuth) {
+            if (userInfo == null && identity == BaseConstant.getInstance().ADMIN) {
+                return "admin";
+            } 
+            if(userInfo == null && identity == BaseConstant.getInstance().DEVELOPER) {
+            	return "index";
+            }
+            function.setMemo(ActionTools.substractClassName(className));
+            function.setMethodName(methodName);
+            // 处理方法前鉴权操作 并将用户的可操作权限放在request中
+            beforeMethod(function, session);
+        }
+        
+        // 处理请求
+        String result = invocation.invoke();
+        // 处理方法后记录日志
+        if (isLog) {
+            afterMethod(className, methodName, request);
+        }
+        return result;
+    }
+
+
+    /**
+     * 定义过滤规则，特殊Action不进行权限和日志操作
+     * 
+     * @param className
+     * @return
+     */
+    private boolean filterRule(String className) {
+        if (className.indexOf("AjaxAction") > 0
+                || className.indexOf("LoginAction") > 0  ) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 定义日志过滤规则，特殊MethodAction不进行日志操作
+     * 
+     * @param className
+     * @return
+     */
+    private boolean filterLogRule(String className, String functionName) {
+        if (className.indexOf("AjaxAction") > 0) {
+            return false;
+        } else if (functionName.startsWith("pre")) {
+            // 以pre开发的方法不记录日志
+            return false;
+        } else if ("view".equals(functionName)) {
+            // view方法不记录日志
+        } else if ("devLogout".equals(functionName)) {
+            // 退出登录的方法不记录日志
+        } else if ("logout".equals(functionName)) {
+            // 退出登录的方法不记录日志
+            return false;
+        } else if (className.indexOf("SrhAction") > 0
+                && ("search".equals(functionName)
+                        || "list".equals(functionName)
+                        || "update".equals(functionName) || "add"
+                            .equals(functionName))) {
+            // 当操作SrhAction 是以pre开头或者search list update add方法，则不记录日志
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 请求动作前拦截 1.用户登录日志 2.权限判断 3. 可用区域
+     * 
+     * @param className
+     * @throws UnAuthenrizationException
+     * @throws UnHandledException
+     */
+    private void beforeMethod(SysFunction function,
+            HttpSession session) throws UnAuthenrizationException,
+            UnHandledException,NoneSessionFoundException,AdminNoneSessionFoundException {
+        @SuppressWarnings("unchecked")
+        Map<String, List<String>> functionMap = (Map<String, List<String>>)session.getAttribute(BaseConstant.ALL_AVAIL_FUNCTION);
+        UserInfo userInfo = (UserInfo) session.getAttribute(
+                BaseConstant.getInstance().CURRENT_USER);
+        boolean isHasAuth = false;
+        if(functionMap.containsKey(function.getMemo()) && functionMap.get(function.getMemo()).contains(function.getMethodName()) ) {
+            isHasAuth = true;
+            return;
+        }
+        if (isHasAuth == false) {
+            throw new UnAuthenrizationException();
+        }
+    }
+    
+    private Long getCurrentUserIdentity(final HttpServletRequest request) {
+    	Cookie[] cookie = request.getCookies();
+    	if (cookie != null) {
+    		for (Cookie item : cookie) {
+    			String name = item.getName();
+    			if(name.equals("identity")) {
+    			    if (StringUtils.isNotBlank(item.getValue())) {
+    			        return Long.parseLong(item.getValue());
+    			    } 
+    				
+    			}
+    		}
+    	}
+    	return null;
+    }
+
+    /**
+     * 记录操作日志
+     * 
+     * @param className
+     * @param request
+     * @param name
+     * @param userInfo
+     * @throws Exception 
+     */
+    private void afterMethod(String className, String functionName,
+            HttpServletRequest request)
+            throws Exception {
+        Long moduleId = null;
+        String tableName = null;
+        if (className.indexOf("LoginAction") > 0) {
+            // 用户登录处理
+            moduleId = BaseConstant.getInstance().MODULE_ID_LOGIN;
+            tableName = "operator";
+        } else {
+            // 正常功能处理
+            moduleId = getModuleIdFromRequest(request);
+            tableName = getTableNameFromRequest(request);
+        }
+
+      //TODO MODULE_ID为空不记录日志?
+        if(moduleId != null){
+            saveLog(request, moduleId, tableName);
+        }
+    }
+    /**
+     * 从Request中取得Module id
+     * 
+     * @param request
+     * @return
+     */
+    private Long getModuleIdFromRequest(HttpServletRequest request) {
+        Long moduleId = (Long) request
+                .getAttribute(BaseConstant.getInstance().MODULE_ID);
+        return moduleId;
+    }
+
+    /**
+     * 从Request中取得Table Name
+     * 
+     * @param request
+     * @return
+     */
+    private String getTableNameFromRequest(HttpServletRequest request) {
+        String tableName = (String) request
+                .getAttribute(BaseConstant.getInstance().TABLE_NAME_AND_ID);
+        return (tableName == null) ? ("") : tableName;
+    }
+
+    /**
+     * 创建日志记录
+     * 
+     * @param request
+     * @param functionName
+     * @param ModuleId
+     * @param tableName
+     * @return
+     * @throws BusinessException
+     */
+    private void saveLog(HttpServletRequest request, Long moduleId,
+            String tableName) throws BusinessException{
+        SysOperatorLog sysOperatorLog = new SysOperatorLog();
+        sysOperatorLog.setDateCreated(DateTools.getSystemDate());
+        sysOperatorLog.setPriority(BaseConstant.getInstance().LOG_LEVEL_INFO);
+        sysOperatorLog.setModuleId(moduleId);
+        sysOperatorLog.setDetailInfo(getTableNameFromRequest(request));
+        UserInfo userInfo = (UserInfo) request.getSession().getAttribute(
+                BaseConstant.getInstance().CURRENT_USER);
+        SysOperator operator = operatorService.findSysOperatorById(userInfo
+                .getOperatorId());
+        sysOperatorLog.setOperator(operator);
+        try {
+            sysOperatorLogService.addSysOperatorLog(sysOperatorLog);
+        } catch (Exception ex) {
+            // 日志记录失败仅记录错误，不影响程序使用
+            logger.error("====== afterMethod logging error" + ex);
+        }
+    }
+    
+    @Override
+    public void destroy() {
+    }
+
+    @Override
+    public void init() {
+    }
+
+}

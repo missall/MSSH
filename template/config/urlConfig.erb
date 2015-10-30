@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE urlrewrite PUBLIC "-//tuckey.org//DTD UrlRewrite 3.2//EN"
+        "http://tuckey.org/res/dtds/urlrewrite3.2.dtd">
+        
+<urlrewrite>
+  <rule>
+    <from>^/$</from>
+    <to>/index.jsp</to>
+  </rule>
+
+  <rule>
+    <from>^/sysRoles$</from>
+    <to>%{context-path}/SysRoleAction.action?method=list</to>
+  </rule>
+	
+  <rule>
+    <from>/sysRole/edit/([0-9]+)$</from>
+    <to>%{context-path}/PreUpdateSysRoleAction.action?method=preUpdate&amp;sysRoleId=$1</to>
+  </rule>
+
+  <rule>
+    <from>^/sysRole/update$</from>
+    <to>%{context-path}/UpdateSysRoleAction.action?method=update</to>
+  </rule>
+
+  <rule>
+    <from>^/sysRole/new$</from>
+    <to>%{context-path}/PreAddSysRoleAction.action?method=preAdd</to>
+  </rule>
+
+  <rule>
+    <from>^/sysRole/add$</from>
+    <to>%{context-path}/AddSysRoleAction.action?method=add</to>
+  </rule>
+
+  <rule>
+    <from>^/sysRole/view/([0-9]+)$</from>
+    <to>%{context-path}/ViewSysRoleAction.action?method=view&amp;sysRoleId=$1</to>
+  </rule>
+
+  <rule>
+    <from>^/sysRole/delete/([0-9]+)$</from>
+    <to>%{context-path}/deleteSysRoleAction.action?method=delete&amp;sysRoleId=$1</to>
+  </rule>
+
+  <rule>
+    <from>^/sysDicts$</from>
+    <to>%{context-path}/SysDictAction.action?method=list</to>
+  </rule>
+	
+  <rule>
+    <from>^/sysDict/edit/([0-9]+)$</from>
+    <to>%{context-path}/PreUpdateSysDictAction.action?method=preUpdate&amp;sysDictId=$1</to>
+  </rule>
+
+  <rule>
+    <from>^/sysDict/update$</from>
+    <to>%{context-path}/UpdateSysDictAction.action?method=update</to>
+  </rule>
+
+  <rule>
+    <from>^/sysDict/new$</from>
+    <to>%{context-path}/PreAddSysDictAction.action?method=preAdd</to>
+  </rule>
+
+  <rule>
+    <from>^/sysDict/add$</from>
+    <to>%{context-path}/AddSysDictAction.action?method=add</to>
+  </rule>
+
+  <rule>
+    <from>^/sysDict/view/([0-9]+)$</from>
+    <to>%{context-path}/ViewSysDictAction.action?method=view&amp;sysDictId=$1</to>
+  </rule>
+
+  <rule>
+    <from>^/sysDict/delete/([0-9]+)$</from>
+    <to>%{context-path}/deleteSysDictAction.action?method=delete&amp;sysDictId=$1</to>
+  </rule>
+
+  <rule>
+    <from>^/sysFunctions$</from>
+    <to>%{context-path}/SysFunctionAction.action?method=list</to>
+  </rule>
+	
+  <rule>
+    <from>^/sysFunction/edit/([0-9]+)$</from>
+    <to>%{context-path}/PreUpdateSysFunctionAction.action?method=preUpdate&amp;sysFunctionId=$1</to>
+  </rule>
+
+  <rule>
+    <from>^/sysFunction/update$</from>
+    <to>%{context-path}/UpdateSysFunctionAction.action?method=update</to>
+  </rule>
+
+  <rule>
+    <from>^/sysFunction/new$</from>
+    <to>%{context-path}/PreAddSysFunctionAction.action?method=preAdd</to>
+  </rule>
+
+  <rule>
+    <from>^/sysFunction/add$</from>
+    <to>%{context-path}/AddSysFunctionAction.action?method=add</to>
+  </rule>
+
+  <rule>
+    <from>^/sysFunction/view/([0-9]+)$</from>
+    <to>%{context-path}/ViewSysFunctionAction.action?method=view&amp;sysFunctionId=$1</to>
+  </rule>
+
+  <rule>
+    <from>^/sysFunction/delete/([0-9]+)$</from>
+    <to>%{context-path}/deleteSysFunctionAction.action?method=delete&amp;sysFunctionId=$1</to>
+  </rule>
+
+  <rule>
+    <from>^/sysOperators$</from>
+    <to>%{context-path}/SysOperatorAction.action?method=list</to>
+  </rule>
+	
+  <rule>
+    <from>^/sysOperator/edit/([0-9]+)$</from>
+    <to>%{context-path}/PreUpdateSysOperatorAction.action?method=preUpdate&amp;sysOperatorId=$1</to>
+  </rule>
+
+  <rule>
+    <from>^/sysOperator/update$</from>
+    <to>%{context-path}/UpdateSysOperatorAction.action?method=update</to>
+  </rule>
+
+  <rule>
+    <from>^/sysOperator/new$</from>
+    <to>%{context-path}/PreAddSysOperatorAction.action?method=preAdd</to>
+  </rule>
+
+  <rule>
+    <from>^/sysOperator/add$</from>
+    <to>%{context-path}/AddSysOperatorAction.action?method=add</to>
+  </rule>
+
+  <rule>
+    <from>^/sysOperator/view/([0-9]+)$</from>
+    <to>%{context-path}/ViewSysOperatorAction.action?method=view&amp;sysOperatorId=$1</to>
+  </rule>
+
+  <rule>
+    <from>^/sysOperator/delete/([0-9]+)$</from>
+    <to>%{context-path}/deleteSysOperatorAction.action?method=delete&amp;sysOperatorId=$1</to>
+  </rule>
+
+  <rule>
+    <from>^/sysOperatorLogs$</from>
+    <to>%{context-path}/SysOperatorLogAction.action?method=list</to>
+  </rule>
+	
+  <rule>
+    <from>^/sysOperatorLog/edit/([0-9]+)$</from>
+    <to>%{context-path}/PreUpdateSysOperatorLogAction.action?method=preUpdate&amp;sysOperatorLogId=$1</to>
+  </rule>
+
+  <rule>
+    <from>^/sysOperatorLog/update$</from>
+    <to>%{context-path}/UpdateSysOperatorLogAction.action?method=update</to>
+  </rule>
+
+  <rule>
+    <from>^/sysOperatorLog/new$</from>
+    <to>%{context-path}/PreAddSysOperatorLogAction.action?method=preAdd</to>
+  </rule>
+
+  <rule>
+    <from>^/sysOperatorLog/add$</from>
+    <to>%{context-path}/AddSysOperatorLogAction.action?method=add</to>
+  </rule>
+  <rule>
+    <from>^/sysOperatorLog/view/([0-9]+)$</from>
+    <to>%{context-path}/ViewSysOperatorLogAction.action?method=view&amp;sysOperatorLogId=$1</to>
+  </rule>
+
+  <rule>
+    <from>^/sysOperatorLog/delete/([0-9]+)$</from>
+    <to>%{context-path}/deleteSysOperatorLogAction.action?method=delete&amp;sysOperatorLogId=$1</to>
+  </rule>
+
+</urlrewrite>

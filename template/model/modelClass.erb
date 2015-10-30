@@ -1,0 +1,40 @@
+/*
+ * Copyright (C) 2015  
+ *
+ * 本系统是商用软件,未经授权擅自复制或传播本程序的部分或全部将是非法的.
+ *
+ * @since 2015-6-18
+ * @author Joe
+ * @version 1.0.0
+ */
+package cn.<%=@@projectName%>.model; 
+
+import java.util.Date;
+import java.util.Set;
+import java.util.HashSet;
+ 
+public class <%=@@bean.table_name%> implements java.io.Serializable, Cloneable {
+
+    private static final long serialVersionUID = 1L; 	
+ <% @@bean.columns.each do |p|%>
+    private <%=p.last%> <%=p.first[0].downcase<<p.first[1,p.first.length]%>;
+<%end%> 
+    public <%=@@bean.table_name%>() {
+        super();
+    }
+<% @@bean.columns.each do |p|%>  
+    /** 
+    * 获取 <%=(p.first)%> 
+    */ 
+    public <%=p.last%> get<%=p.first[0].upcase<<p.first[1,p.first.length]%>(){ 
+        return this.<%=p.first[0].downcase<<p.first[1,p.first.length]%>; 
+    }
+         
+    /** 
+    * 设置 <%=(p.first)%> 
+    */ 
+    public void set<%=p.first[0].upcase<<p.first[1,p.first.length]%>(<%=p.last()%> <%=p.first[0].downcase<<p.first[1,p.first.length]%>){ 
+        this.<%=p.first[0].downcase<<p.first[1,p.first.length]%> = <%=p.first[0].downcase<<p.first[1,p.first.length]%>; 
+    }
+<%end%>
+}

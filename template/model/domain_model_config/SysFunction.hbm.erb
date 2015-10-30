@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+  <class name="cn.<%=@@projectName%>.model.SysFunction" table="sys_function">
+    <id name="sysFunctionId" type="java.lang.Long">
+      <column name="SYS_FUNCTION_ID" precision="10" scale="0" />
+      <generator class="increment"></generator>
+    </id>
+    <property name="name" type="java.lang.String">
+      <column name="NAME" />
+    </property>
+    <property name="memo" type="java.lang.String">
+      <column name="MEMO" />
+    </property>
+    <property name="methodName" type="java.lang.String">
+      <column name="METHOD_NAME" />
+    </property>
+    <property name="authFlag" type="java.lang.Long">
+      <column name="AUTH_FLAG" />
+    </property>
+    <property name="levelId" type="java.lang.Long">
+      <column name="LEVEL_ID" />
+    </property>
+    <property name="dateCreated" type="java.sql.Timestamp">
+      <column name="DATE_CREATED" />
+    </property>
+    <property name="createdBy" type="java.lang.Long">
+      <column name="CREATED_BY" precision="10" scale="0" />
+    </property>
+    <many-to-one name="funFunction" class="cn.<%=@@projectName%>.model.SysFunction"
+      fetch="select">
+      <column name="FUN_FUNC_ID" />
+    </many-to-one>
+  </class>
+</hibernate-mapping>

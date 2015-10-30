@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+  <class name="cn.<%=@@projectName%>.model.SysOperatorLog" table="sys_operate_log">
+    <id name="sysOperateLogId" type="java.lang.Long">
+      <column name="SYS_OPERATE_LOG_ID" precision="10" scale="0" />
+      <generator class="increment"></generator>
+    </id>
+    <property name="priority" type="java.lang.Long">
+      <column name="PRIORITY" precision="1" scale="0" />
+    </property>
+    <property name="operateInfo" type="java.lang.String">
+      <column name="operate_info" length="600" />
+    </property>
+    <property name="moduleId" type="java.lang.Long">
+      <column name="MODULE_ID" precision="4" scale="0" />
+    </property>
+    <property name="dateCreated" type="java.sql.Timestamp">
+      <column name="DATE_CREATED" length="7" />
+    </property>
+    <property name="detailInfo" type="java.lang.String">
+      <column name="detail_info" length="100" />
+    </property>
+    <many-to-one name="operator" class="cn.<%=@@projectName%>.model.SysOperator" fetch="select">
+      <column name="CREATED_BY" precision="10" scale="0" />
+    </many-to-one> 
+  </class>
+</hibernate-mapping>

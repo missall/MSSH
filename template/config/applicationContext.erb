@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
+
+<beans default-autowire="byName">
+  <bean class="org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor" />  
+  <import resource="db-beans.xml" />
+  <import resource="hibernate-conf.xml" />
+  <import resource="service-beans.xml" />
+  <import resource="dao-beans.xml" />
+  <import resource="action-beans.xml" />
+
+  <bean id="constant" class="cn.<%=@@projectName%>.util.BaseConstant" />
+  <bean id="commonService" class="cn.<%=@@projectName%>.service.impl.CommonServiceImpl" />
+</beans>

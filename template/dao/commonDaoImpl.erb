@@ -1,0 +1,19 @@
+package cn.<%=@@projectName%>.dao.impl;
+
+import java.io.Serializable;
+import java.sql.SQLException;
+import java.util.List;
+
+import org.hibernate.HibernateException;
+import org.hibernate.Session;
+import org.hibernate.criterion.DetachedCriteria;
+import org.hibernate.criterion.Order;
+import org.springframework.orm.hibernate3.HibernateCallback;
+
+import cn.<%=@@projectName%>.dao.CommonDao;
+import cn.<%=@@projectName%>.framework.AbstractManager;
+import cn.<%=@@projectName%>.framework.PageFetch;
+
+public class CommonDaoImpl extends AbstractManager implements CommonDao {
+
+}

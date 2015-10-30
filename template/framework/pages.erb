@@ -1,0 +1,389 @@
+package cn.<%=@@projectName%>.framework;   
+  
+import java.io.IOException;
+import java.io.Writer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.apache.struts2.components.Component;
+
+import com.opensymphony.xwork2.util.ValueStack;
+  
+/** 
+ * 分页逻辑 
+ */  
+public class Pages extends Component {  
+  
+    @SuppressWarnings("unused")
+    private HttpServletRequest request;  
+    private String cpage;  
+    private String total;  
+    private String visitUrl;  
+    private String styleClass;  
+    private String theme; 
+      
+    public String getCpage() {  
+        return cpage;  
+    }  
+  
+    public void setCpage(String cpage) {  
+        this.cpage = cpage;  
+    }  
+  
+    public String getTotal() {  
+        return total;  
+    }  
+  
+    public void setTotal(String total) {  
+        this.total = total;  
+    }  
+  
+    public String getVisitUrl() {  
+        return visitUrl;  
+    }  
+  
+    public void setVisitUrl(String visitUrl) {  
+        this.visitUrl = visitUrl;  
+    }  
+  
+    public String getStyleClass() {  
+        return styleClass;  
+    }  
+  
+    public void setStyleClass(String styleClass) {  
+        this.styleClass = styleClass;  
+    }  
+  
+    public String getTheme() {  
+        return theme;  
+    }  
+  
+    public void setTheme(String theme) {  
+        this.theme = theme;  
+    }  
+  
+    public Pages(ValueStack arg0, HttpServletRequest request) {  
+        super(arg0);  
+        this.request = request;  
+    }  
+
+    public String getArr(int cpageInt,int totalInt){
+      StringBuilder str = new StringBuilder();  
+      str.append("<ul class='pagination pagin-slim'>");
+      //处理第0页
+      if (cpageInt == 0){
+          cpageInt =1;
+      }
+      //判断当前页是否为第一页
+      //若不是 添加<< < 
+      if (cpageInt != 1 ) {
+          str.append("<li>");
+          str.append("<a onclick=loadPage(1)");  
+          str.append(">");
+          str.append("&laquo;</a></li>");
+          
+          str.append("<li>");
+          str.append("<a onclick=loadPage("+(cpageInt-1)+")");  
+          str.append(">");
+          str.append("&#8249</a></li>");
+       
+      }
+      //判断是否少于5页
+      //若不是 不需生成...
+      if ( totalInt < 5 ) {
+          for ( int i=0 ; i<totalInt ; i++) {
+              str.append("<li>");
+              str.append("<a onclick=loadPage("+i+")>");  
+              str.append(i+"</a></li>");
+          }
+      } else if (cpageInt < totalInt - 4 ) {
+          str.append("<li class='active'>");
+          str.append("<a onclick=loadPage("+cpageInt+")>");  
+          str.append(cpageInt+"</a></li>");
+          str.append("<li>");
+          str.append("<a onclick=loadPage("+(cpageInt+1)+")>");  
+          str.append((cpageInt+1)+"</a></li>");
+          str.append("<li class='disabled'>....</li>");
+          str.append("<li>");
+          str.append("<a onclick=loadPage("+(totalInt-1)+")>");  
+          str.append((totalInt-1)+"</a></li>");
+          str.append("<li>");
+          str.append("<a onclick=loadPage("+totalInt+")>");  
+          str.append(totalInt+"</a></li>");
+      } else if (cpageInt >= totalInt - 4) {
+          for ( int i=4 ; i>=0 ; i-- ) {
+              if (totalInt-i==cpageInt ){
+                  str.append("<li class='active'>");
+                  str.append("<a onclick=loadPage("+cpageInt+")>");
+                  str.append(cpageInt+"</a></li>");
+              } else {
+                  str.append("<li>");
+                  str.append("<a onclick=loadPage("+(totalInt-i)+")>");  
+                  str.append((totalInt-i)+"</a></li>");
+              }
+          }
+      }
+      
+      if ( cpageInt <= totalInt-1 ) {
+          str.append("<li>");
+          str.append("<a onclick=loadPage("+(cpageInt+1)+")>");  
+          
+          str.append("&#8250;</a></li>");
+          
+          str.append("<li>");
+          str.append("<a onclick=loadPage("+totalInt+")>");  
+          str.append("&raquo;</a></li>");
+      }
+  /*str.append("<input type='text' value=''>&nbsp;");
+  str.append("<a href='#'>Go</a>");*/
+str.append("</ul>");
+        return str.toString();
+    }
+    @Override  
+    public boolean start(Writer writer) {  
+        boolean result = super.start(writer);  
+        try {  
+            StringBuilder str = new StringBuilder();  
+            boolean isValid = true;  
+  
+            // 从ValueStack中取出数值  
+            if (isValid) {  
+                if (total.startsWith("%{") && total.endsWith("}")) {  
+                    total = total.substring(2, total.length() - 1);  
+                    total = (String) this.getStack().findValue(total);  
+                    isValid = total == null ? false : true;  
+                } else {  
+                    isValid = false;  
+                }  
+            }  
+            if (isValid) {  
+                if (cpage.startsWith("%{") && cpage.endsWith("}")) {  
+                    cpage = cpage.substring(2, cpage.length() - 1);  
+                    cpage = (String) this.getStack().findValue(cpage);  
+                    isValid = cpage == null ? false : true;  
+                } else {  
+                    isValid = false;  
+                }  
+            }  
+            if (isValid) {  
+                if (visitUrl.startsWith("%{") && visitUrl.endsWith("}")) {  
+                    visitUrl = visitUrl.substring(2, visitUrl.length() - 1);  
+                    visitUrl = (String) this.getStack().findValue(visitUrl);  
+                    isValid = visitUrl == null ? false : true;  
+                } else {  
+                    isValid = false;  
+                }  
+            }  
+  
+            if (isValid) {  
+                Integer cpageInt = Integer.valueOf(cpage);  
+                
+                if (styleClass != null) {  
+
+                } else {  
+                 
+                }  
+  
+                // 文本样式  
+                if (theme == null || "text".equals(theme)) {  
+                    // 当前页与总页数相等  
+                    if (cpage.equals(total)) {  
+                        // 如果total = 1，则无需分页，显示“[第1页] [共1页]”  
+                        if ("1".equals(total)) {  
+                            str.append("[第 " + cpage + " 页]");  
+                            str.append("&nbsp;[共 " + total + " 页]");  
+                        } else {  
+                            // 到达最后一页,显示“[首页] [上一页] [末页]”  
+                            str.append("<a href='");  
+                            str.append(visitUrl);  
+                            str.append("&cpage=1&total=" + total + "&visitUrl="  
+                                    + visitUrl);  
+                            str.append("'>[首页]</a> <a href='");  
+                            str.append(visitUrl);  
+                            str.append("&cpage=" + (cpageInt - 1) + "&total="  
+                                    + total + "&visitUrl=" + visitUrl);  
+                            str.append("'>[上一页]</a> <a href='");  
+                            str.append(visitUrl);  
+                            str.append("&cpage=" + total + "&total=" + total  
+                                    + "&visitUrl=" + visitUrl);  
+                            str.append("'>[末页]</a>");  
+                        }  
+                    } else {  
+                        // 当前页与总页数不相同  
+                        if ("1".equals(cpage)) {  
+                            // 第一页，显示“[首页] [下一页] [末页]”  
+                            str.append("<a href='");  
+                            str.append(visitUrl);  
+                            str.append("&cpage=1&total=" + total + "&visitUrl="  
+                                    + visitUrl);  
+                            str.append("'>[首页]</a> <a href='");  
+                            str.append(visitUrl);  
+                            str.append("&cpage=" + (cpageInt + 1) + "&total="  
+                                    + total + "&visitUrl=" + visitUrl);  
+                            str.append("'>[下一页]</a> <a href='");  
+                            str.append(visitUrl);  
+                            str.append("&cpage=" + total + "&total=" + total  
+                                    + "&visitUrl=" + visitUrl);  
+                            str.append("'>[末页]</a>");  
+                        } else {  
+                            // 不是第一页，显示“[首页] [上一页] [下一页] [末页]”  
+                            str.append("<a href='");  
+                            str.append(visitUrl);  
+                            str.append("&cpage=1&total=" + total + "&visitUrl="  
+                                    + visitUrl);  
+                            str.append("'>[首页]</a> <a href='");  
+                            str.append(visitUrl);  
+                            str.append("&cpage=" + (cpageInt - 1) + "&total="  
+                                    + total + "&visitUrl=" + visitUrl);  
+                            str.append("'>[上一页]</a> <a href='");  
+                            str.append(visitUrl);  
+                            str.append("&cpage=" + (cpageInt + 1) + "&total="  
+                                    + total + "&visitUrl=" + visitUrl);  
+                            str.append("'>[下一页]</a> <a href='");  
+                            str.append(visitUrl);  
+                            str.append("&cpage=" + total + "&total=" + total  
+                                    + "&visitUrl=" + visitUrl);  
+                            str.append("'>[末页]</a>");  
+                        }  
+                    }  
+                } else if ("number".equals(theme)) { // 数字样式 [1 2 3 4 5 6 7 8 9 10 > >>]  
+                    Integer totalInt = Integer.valueOf(total);  
+  
+                    // 如果只有一页，则无需分页  
+                    //str.append("[&nbsp;");  
+                    if (totalInt == 1) {  
+                        //str.append("<strong>1</strong>&nbsp;");  
+                    } else {  
+                        // 计算一共分几组  
+                        int group = (totalInt - 1) / 10 + 1;  
+                        // 当前第几组  
+                        int cgroup = (cpageInt - 1) / 10 + 1;  
+                        if (cgroup > 1) {  
+                            // 当前不是第一组，要显示“<< <”  
+                            // <<：返回前一组第一页  
+                            // <：返回前一页  
+                            str.append("<a onclick=window.location.href='");  
+                            str.append("/<%=@@projectName%>/"+visitUrl);  
+                            str.append("/" + ((cgroup - 2) * 10 + 1));  
+                            str.append("'>&laquo;</a>&nbsp;");  
+                            str.append("<a onclick=window.location.href='");  
+                            str.append("/<%=@@projectName%>/"+visitUrl);  
+                            str.append("/" + (cpageInt - 1));  
+                            str.append("'>&#8249;</a>&nbsp;");  
+                        }  
+                        // 10个为一组显示  
+                        for (int i = (cgroup - 1) * 10 + 1; i <= totalInt  
+                                && i <= cgroup * 10; i++) {  
+                            if (cpageInt == i) { // 当前页要加粗显示  
+                                str.append("<strong>");  
+                            }  
+                            str.append("<a onclick=window.location.href='");  
+                            str.append("/<%=@@projectName%>/"+visitUrl);  
+                            str.append("/" + i);  
+                            str.append("'>" + i + "</a>&nbsp;");  
+                            if (cpageInt == i) {  
+                                str.append("</strong>");  
+                            }  
+                        }  
+                        // 如果多于1组并且不是最后一组，显示“> >>”  
+                        if (group > 1 && cgroup != group) {  
+                            // >>：返回下一组最后一页  
+                            // >：返回下一页  
+                            str.append("<a onclick=window.location.href='");  
+                            str.append("/<%=@@projectName%>/"+visitUrl);  
+                            str.append("/" + (cpageInt + 1));  
+                            str.append("'>&#8250;</a>&nbsp;");  
+                            str.append("<a onclick=window.location.href='");  
+                            str.append("/<%=@@projectName%>/"+visitUrl);  
+                            str.append("/"  
+                                    + ((cgroup * 10 + 10) > totalInt ? totalInt  
+                                            : (cgroup * 10 + 10)));  
+                            str.append("'>&raquo;</a>&nbsp;");
+                        }  
+                    }  
+                    
+                }
+                    
+                    else if ("bootstrap".equals(theme)) { // bootstrap风格数字样式 << < 1 2 ... 9 10 > >>   
+                        Integer totalInt = Integer.valueOf(total);  
+                        str.append("<ul class='pagination pagin-slim'>");
+                        //处理第0页
+                        if (cpageInt == 0){
+                            cpageInt =1;
+                        }
+                        //判断当前页是否为第一页
+                        //若不是 添加<< < 
+                        if (cpageInt != 1 ) {
+                            str.append("<li>");
+                            str.append("<a onclick=loadPage(1)");  
+                            str.append(">");
+                            str.append("&laquo;</a></li>");
+                            
+                            str.append("<li>");
+                            str.append("<a onclick=loadPage("+(cpageInt-1)+")");  
+                            str.append(">");
+                            str.append("&#8249</a></li>");
+                         
+                        }
+                        //判断是否少于5页
+                        //若不是 不需生成...
+                        if ( totalInt < 5 ) {
+                            for ( int i=0 ; i<totalInt ; i++) {
+                                str.append("<li>");
+                                str.append("<a onclick=loadPage("+i+")>");  
+                                str.append(i+"</a></li>");
+                            }
+                        } else if (cpageInt < totalInt - 4 ) {
+                            str.append("<li class='active'>");
+                            str.append("<a onclick=loadPage("+cpageInt+")>");  
+                            str.append(cpageInt+"</a></li>");
+                            str.append("<li>");
+                            str.append("<a onclick=loadPage("+(cpageInt+1)+")>");  
+                            str.append((cpageInt+1)+"</a></li>");
+                            str.append("<li class='disabled'>....</li>");
+                            str.append("<li>");
+                            str.append("<a onclick=loadPage("+(totalInt-1)+")>");  
+                            str.append((totalInt-1)+"</a></li>");
+                            str.append("<li>");
+                            str.append("<a onclick=loadPage("+totalInt+")>");  
+                            str.append(totalInt+"</a></li>");
+                        } else if (cpageInt >= totalInt - 4) {
+                            for ( int i=4 ; i>=0 ; i-- ) {
+                                if (totalInt-i==cpageInt ){
+                                    str.append("<li class='active'>");
+                                    str.append("<a onclick=loadPage("+cpageInt+")>");  
+                                    str.append(cpageInt+"</a></li>");
+                                } else {
+                                    str.append("<li>");
+                                    str.append("<a onclick=loadPage("+(totalInt-i)+")>");  
+                                    str.append((totalInt-i)+"</a></li>");
+                                }
+                            }
+                        }
+                        
+                        if ( cpageInt <= totalInt-1 ) {
+                            str.append("<li>");
+                            str.append("<a onclick=loadPage("+(cpageInt+1)+")>");  
+                            
+                            str.append("&#8250;</a></li>");
+                            
+                            str.append("<li>");
+                            str.append("<a onclick=loadPage("+totalInt+")>");  
+                            str.append("&raquo;</a></li>");
+                        }
+					/*str.append("<input type='text' value=''>&nbsp;");
+					str.append("<a href='#'>Go</a>");*/
+                }  
+                str.append("</ul>");
+            }  
+  
+            writer.write(str.toString());  
+  
+        } catch (IOException ex) {  
+            Logger.getLogger(Pages.class.getName()).log(Level.SEVERE, null, ex);  
+        }  
+        return result;  
+    }  
+}

@@ -1,0 +1,121 @@
+package cn.<%=@@projectName%>.framework;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import javax.servlet.ServletContext;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import net.sf.json.JSONObject;
+import org.apache.struts2.interceptor.ServletRequestAware;
+import org.apache.struts2.interceptor.ServletResponseAware;
+import org.apache.struts2.interceptor.SessionAware;
+import org.apache.struts2.util.ServletContextAware;
+import cn.<%=@@projectName%>.util.Tools;
+import com.opensymphony.xwork2.ActionSupport;
+
+public class BaseAction extends ActionSupport implements ServletRequestAware,
+        ServletResponseAware, SessionAware, ServletContextAware {
+    private static final long serialVersionUID = 1L;
+    protected HttpServletRequest request;
+    protected HttpServletResponse response;
+    protected ServletContext application;
+    protected Map<String, Object> session;
+    private String cpage;
+    private String total;
+    private String visitUrl;
+    private String message;
+    public static final String MESSAGE = "MESSAGE";
+    public JSONObject json = new JSONObject();
+
+    public JSONObject getJson() {
+        if (this.json == null)
+            this.json = new JSONObject();
+        return json;
+    }
+
+    public void setJson(JSONObject json) {
+        this.json = json;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    @Override
+    public void setServletRequest(HttpServletRequest request) {
+        this.request = request;
+    }
+
+    @Override
+    public void setServletResponse(HttpServletResponse response) {
+        this.response = response;
+    }
+
+    @Override
+    public void setServletContext(ServletContext application) {
+        this.application = application;
+    }
+
+    @Override
+    public void setSession(Map<String, Object> session) {
+        this.session = session;
+    }
+   
+    public String getCpage() {
+        return cpage;
+    }
+
+    public void setCpage(String cpage) {
+        this.cpage = cpage;
+    }
+
+    public String getTotal() {
+        return total;
+    }
+
+    public void setTotal(String total) {
+        this.total = total;
+    }
+
+    public String getVisitUrl() {
+        return visitUrl;
+    }
+
+    public void setVisitUrl(String visitUrl) {
+        this.visitUrl = visitUrl;
+    }
+
+    /**
+     * 从Request中取得分页信息
+     * 
+     * @param request
+     * @param tableName
+     * @param moduleId
+     */
+    protected <T> PageFetch<T> getPageFetchFromRequest(
+            HttpServletRequest request) {
+        String cpage = Tools.getParameterFormRequest(request, "cpage");
+        cpage = (cpage == null || cpage == "") ? "1" : cpage;
+        return new PageFetch<T>(new ArrayList<T>(), cpage);
+    }
+
+    /**
+     * 从Request中取得分页信息
+     * 
+     * @param request
+     * @param tableName
+     * @param moduleId
+     */
+    protected <T> PageFetch<T> getPageFetchFromRequest(
+            HttpServletRequest request, List<T> items) {
+        String startIndex = Tools
+                .getParameterFormRequest(request, "startIndex");
+        return Tools.getPageFetch(items, Integer.parseInt(startIndex));
+    }
+
+}

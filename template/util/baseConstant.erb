@@ -1,0 +1,240 @@
+package cn.<%=@@projectName%>.util;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
+import org.springframework.web.context.WebApplicationContext;
+
+import cn.<%=@@projectName%>.framework.PageFetch;
+import cn.<%=@@projectName%>.model.SysDict;
+import cn.<%=@@projectName%>.service.CommonService;
+
+public class BaseConstant {
+
+    private static BaseConstant instance;
+
+    public static BaseConstant getInstance() {
+        return BaseConstant.instance;
+    }
+
+    public static void setInstance(BaseConstant instance) {
+        BaseConstant.instance = instance;
+    }
+
+    /**
+     * 系统超级用户号码 对应数据库初始数据 OPERATOR表 OPER_ID
+     */
+    public static final long ADMIN_ID = 1L;
+
+    public static final long BILLING_SYSTEM_ID = -100L;
+
+    /**
+     * 格式校验类型
+     */   
+    public static final String EMAIL_REGEX_STR = "^([a-z0-9A-Z]+[-|\\.]?)+[a-z0-9A-Z]@([a-z0-9A-Z]+(-[a-z0-9A-Z]+)?\\.)+[a-zA-Z]{2,}$";
+    
+    /**
+     * 阿拉伯数字零，一般用来填充String。
+     */
+    public static final String ZERO = "0";
+
+    /** 系统默认的日期格式 */
+    public static final String DATE_FORMAT = "yyyy-MM-dd";
+
+    /** 系统默认的日期时间格式 */
+    public static final String DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
+
+    /** 系统默认的24小时时间格式 */
+    public static final String DATE_TIME24_FORMAT = "HH:mm:ss";
+
+    /** 系统默认的24小时时间格式时分 */
+    public static final String DATE_TIME24_H_M = "HH:mm";
+
+    /** 系统默认的月份格式 */
+    public static final String DATE_YEAR_MONTH_FORMAT = "yyyy-MM";
+
+    /** 系统默认的月份格式 */
+    public static final String DATE_MONTH_FORMAT = "yyyy年MM月";
+
+    /** 系统默认的时分秒格式 */
+    public static final String HOUR_MINUTE_SECOND = "hh:mm:ss";
+    
+    /** 系统默认的月日时分格式 */
+    public static final String MONTH_DATE_HOUR_MINUTE = "MM-dd HH:mm";
+    
+    /** 系统默认的年月日时分格式 */
+    public static final String YEAR_MONTH_DATE_HOUR_MINUTE = "yyyy-MM-dd HH:mm";
+    
+    /** 系统默认的月日格式 */
+    public static final String MONTH_DAY_FORMAT = "MM-dd";
+    
+    /** 系统默认的月日时分秒格式 */
+    public static final String MONTH_DAY_HH_MM_SS_FORMAT = "MM-dd HH:mm:ss";
+    
+    /** 系统默认的年月日，时分格式 */
+    public static final String DATE_MONTH_HOUR_FORMAT = "yyyy年MM月dd日 HH:mm";
+
+    /** 所有可以操作的方法 */
+    public static final String ALL_AVAIL_FUNCTION = "all_avail_function";
+
+    /** 有效性标记，无效记录 */
+    public static final Long FLAG_NOT_VALID = new Long(1);
+
+    /** 有效性标记，有效记录 */
+    public static final Long FLAG_VALID = new Long(0);
+
+    /** 终端用户管理新增用户，客户初始密码 123456 */
+    public String USERMGT_INIT_PASSWORD = "123456";
+
+    /** 布尔值：0:false;1:true */
+    public static final Map<Integer, String> IS_BOOLEAN = new HashMap<Integer, String>();
+
+    public static final PageFetch<Object> EMPTY_PAGE = new PageFetch<Object>(
+            new ArrayList<Object>(), 0, 1, 0);
+
+    /** 有效性标记，普通人员状态 */
+    public Long FLAG_COMMON_PERSON = new Long(-1);
+
+    public static final Long FAILD = 0L;
+
+    public static final Long SUCCESS = 1L;
+
+    public static final String USER_ROLE_ID = "2";
+
+    /** 超级管理员状态 */
+    public static final Long SUP_OPERATOR_STATUS = -1L;
+
+    /** 操作员状态 */
+    public static final Long OPERATOR_STATUS = 0L;
+    
+    /** 操作员帐号启用状态 */
+    public static final Long OPERA_USE_STATUS = 1L;
+    
+    /** 操作员帐号停用状态 */
+    public static final Long OPERA_STOP_STATUS = 2L;
+   
+    public static final Long FUNCTION_ALL = 2L;
+
+    /** 本模块可操作的方法 */
+    public String AVAIL_FUNCTION = "avail_function";
+
+    /** 新增用户时的默认状态(3表示待激活) */
+    public Long DEFAULT_USER_STATUS = 3L;
+
+    public Long DEFAULT_USER_LEVEL = 1L;
+
+    /** 当前用户 */
+    public String CURRENT_USER = "current_user";
+
+    /** 用户身份 */
+    public Long ADMIN = 0L;
+
+    public Long DEVELOPER = 1L;
+
+    /** 日志级别：0:信息 1:警告 */
+    public Long LOG_LEVEL_INFO = 0L;
+
+    public Long LOG_LEVEL_WARN = 1L;
+
+    /** 模块编号：用户登录 注销 0 */
+    public Long MODULE_ID_LOGIN = new Long(0);
+
+    /** 模块编号：系统管理1 */
+    public Long MODULE_ID_PRIVILEGE = new Long(1);
+    
+    /** 模块编号：开发者管理2 */
+    public Long MODULE_ID_DEVELOPER = new Long(2);
+    
+    /** 模块编号：用户管理3 */
+    public Long MODULE_ID_USER_MGT = new Long(3);
+    
+    /** 模块编号：信息审核管理5 */
+    public Long MODULE_ID_AUDIT = new Long(5);
+    
+    /** 模块编号：数据分析6 */
+    public Long MODULE_ID_STATIS = new Long(6);
+    
+    /** 操作模块名 */
+    public String MODULE_ID = "module_id";
+
+    /** 操作表名 */
+    public String TABLE_NAME_AND_ID = "table_name_and_id";
+
+    /** 默认每页显示记录数目 */
+    public int PAGE_COUNT = 10;
+
+    /** 操作成功 */
+    public String OPERATION_SUCCESS = "0";
+
+    /** 操作失败 */
+    public String OPERATION_FAILED = "Failed";
+
+    /**
+     * 在此添加需要过滤的动作 可以根据需要将多个动作映射为一个名字
+     */
+    public Map<String, String> actionFilterMap = new HashMap<String, String>(); 
+    
+    public static final Map<String, String> iconLink = new TreeMap<String, String>();
+    
+    public static final Long ERROR_STATUS = 0L;
+
+    /** 配置类别：性别类型 */
+    public static final String SEX_TYPE = "69";
+    
+    /** 1：男 2：女 */
+    public static final Map<String, SysDict> sexTypeMap = new TreeMap<String, SysDict>();
+    
+    /** 配置类别：操作员状态类型 */
+    public static final String OPER_STATUS = "70";
+
+    public static void loadConfig(WebApplicationContext ctx) throws Exception {
+        CommonService commonService;
+        commonService = (CommonService) ctx.getBean("commonService");
+        List<SysDict> dictList;
+        // 布尔值
+        IS_BOOLEAN.put(0, "否");
+        IS_BOOLEAN.put(1, "是");
+
+        dictList = commonService.getDictList(SEX_TYPE);
+        setDictMap(sexTypeMap, dictList);
+
+    }
+
+    /**
+     * Set the Map's content.
+     * 
+     * @param map
+     * @param list
+     */
+    public static void setDictMap(Map<String, SysDict> map, List<SysDict> list) {
+        if (list == null) {
+            return;
+        }
+        for (Iterator<SysDict> it = list.iterator(); it.hasNext();) {
+            SysDict dict = it.next();
+            map.put(String.valueOf(dict.getValue()), dict);
+        }
+    }
+    
+    public List<SysDict> getStates(String serviceStateKey,
+            Map<String, String[]> stateChangeMap, Map<String, SysDict> stateMap) {
+        String[] stateValue = (String[]) stateChangeMap.get(serviceStateKey);
+        List<SysDict> dictList = new ArrayList<SysDict>();
+        if (stateValue == null) {
+            dictList.add(stateMap.get(serviceStateKey));
+        } else {
+            for (int i = 0; i < stateValue.length; i++) {
+                if (stateMap.get(stateValue[i]) != null) {
+                    dictList.add(stateMap.get(stateValue[i]));
+                }
+            }
+        }
+
+        return dictList;
+    }
+
+  
+}
