@@ -16,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import cn.<%=@@projectName%>.exception.BusinessException;
 import cn.<%=@@projectName%>.exception.UnAuthenrizationException;
 import cn.<%=@@projectName%>.exception.NoneSessionFoundException;
-import cn.<%=@@projectName%>.exception.AdminNoneSessionFoundException;
 import cn.<%=@@projectName%>.exception.UnHandledException;
 import cn.<%=@@projectName%>.model.SysFunction;
 import cn.<%=@@projectName%>.model.SysOperator;
@@ -145,7 +144,7 @@ public class AroundAdviceInterceptor implements Interceptor {
      */
     private void beforeMethod(SysFunction function,
             HttpSession session) throws UnAuthenrizationException,
-            UnHandledException,NoneSessionFoundException,AdminNoneSessionFoundException {
+            UnHandledException,NoneSessionFoundException {
         @SuppressWarnings("unchecked")
         Map<String, List<String>> functionMap = (Map<String, List<String>>)session.getAttribute(BaseConstant.ALL_AVAIL_FUNCTION);
         UserInfo userInfo = (UserInfo) session.getAttribute(

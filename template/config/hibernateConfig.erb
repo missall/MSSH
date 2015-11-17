@@ -16,6 +16,8 @@
         <prop key="hibernate.dialect">
           org.hibernate.dialect.PostgreSQLDialect
         </prop>
+        <!-- 根据模型类自动同步数据库表 -->
+        <prop key="hibernate.hbm2ddl.auto">update</prop>
         <!-- 以下开发期间为true -->
         <prop key="hibernate.show_sql">${hibernate.show_sql}</prop>
         <prop key="hibernate.use_sql_comments">true</prop>
