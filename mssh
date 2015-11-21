@@ -8,39 +8,37 @@ require 'deprecated'
 require "dbi"
 
 module Mssh
-  class SshScaffold
-  	include REXML
+	class SshScaffold
+	include REXML
+		user_pwd_path = Dir::pwd	  	
+		@temp_home = ENV["MSSH_HOME"] + "/template"
 
-  	user_pwd_path = Dir::pwd
-  	
-  	@temp_home = ENV["MSSH_HOME"] + "/template"
+	  	#模版文件目录结构
+		@temp_dirs = {
+			:base_config   => "#{@temp_home}/config",
+			:other         => "#{@temp_home}/other",
+			:framework     => "#{@temp_home}/framework",
+			:util          => "#{@temp_home}/util",
+			:dao           => "#{@temp_home}/dao",
+			:service       => "#{@temp_home}/service",
+			:model         => "#{@temp_home}/model",
+			:model_config  => "#{@temp_home}/model/domain_model_config",
+			:exception     => "#{@temp_home}/exception",
+			:third_res     => "#{@temp_home}/third_res",
+			:view          => "#{@temp_home}/view"
+		}
+		
+		@@bean = nil
+	  @@modelName = nil
 
-  	#模版文件目录结构
-	@temp_dirs = {
-		:base_config   => "#{@temp_home}/config",
-		:other         => "#{@temp_home}/other",
-		:framework     => "#{@temp_home}/framework",
-		:util          => "#{@temp_home}/util",
-		:dao           => "#{@temp_home}/dao",
-		:service       => "#{@temp_home}/service",
-		:model         => "#{@temp_home}/model",
-		:model_config  => "#{@temp_home}/model/domain_model_config",
-		:exception     => "#{@temp_home}/exception",
-		:third_res     => "#{@temp_home}/third_res",
-		:view          => "#{@temp_home}/view"
-	}
-	
-	@@bean = nil
-  	@@modelName = nil
+	  @jsp_declare = "<%@ page contentType='text/html; charset=UTF-8'%>\n<%@ taglib uri='/struts-tags' prefix='s'%>\n<%@ taglib uri='/WEB-INF/pages-tags.tld' prefix='pages' %>\n"
 
-  	@jsp_declare = "<%@ page contentType='text/html; charset=UTF-8'%>\n<%@ taglib uri='/struts-tags' prefix='s'%>\n<%@ taglib uri='/WEB-INF/pages-tags.tld' prefix='pages' %>\n"
-
-  	CREATE = "\033[32m 创建 \033[0m"
-  	UPDATE = "\033[33m 更新 \033[0m"
-  	DELETE = "\033[31m 删除 \033[0m"
-	FORK   = "\033[31m × \033[0m"
-	RIGHT  = "\033[32m √ \033[0m"
-  	
+	  CREATE = "\033[32m 创建 \033[0m"
+	  UPDATE = "\033[33m 更新 \033[0m"
+	  DELETE = "\033[31m 删除 \033[0m"
+		FORK   = "\033[31m × \033[0m"
+		RIGHT  = "\033[32m √ \033[0m"
+	  	
   	def self.getProjectConfig()
   		if File.exist?(".project")
   			project_file = File.open(".project","r")
@@ -51,476 +49,469 @@ module Mssh
   		end
   	end
 
-  	@@projectName = self.getProjectConfig()
+  	@@projectName = self.getProjectConfig
+		@model_dir = "src/main/java/cn/#{@@projectName}/model/"
+		@dao_dir = "src/main/java/cn/#{@@projectName}/dao/"
+		@dao_impl_dir = "src/main/java/cn/#{@@projectName}/dao/impl/"
+		@service_dir = "src/main/java/cn/#{@@projectName}/service/"
+		@service_impl_dir = "src/main/java/cn/#{@@projectName}/service/impl/"
+		@action_dir = "src/main/java/cn/#{@@projectName}/web/"
+		@dao_beans_xml = "src/main/webapp/WEB-INF/config/dao-beans.xml"
+		@service_beans_xml = "src/main/webapp/WEB-INF/config/service-beans.xml"
+		@action_beans_xml = "src/main/webapp/WEB-INF/config/action-beans.xml"	
+		@hibernate_xml = "src/main/webapp/WEB-INF/config/hibernate-conf.xml"
+		@struts_xml = "src/main/resource/struts.xml"
+		@action_method_dir = "src/main/resource/"
+		@jsp_base_dir = "src/main/webapp/WEB-INF/jsp/views/"
+		@dao_test_dir = "src/test/java/dao/"
 
-	@model_dir = "src/main/java/cn/#{@@projectName}/model/"
-	@dao_dir = "src/main/java/cn/#{@@projectName}/dao/"
-	@dao_impl_dir = "src/main/java/cn/#{@@projectName}/dao/impl/"
-	@service_dir = "src/main/java/cn/#{@@projectName}/service/"
-	@service_impl_dir = "src/main/java/cn/#{@@projectName}/service/impl/"
-	@action_dir = "src/main/java/cn/#{@@projectName}/web/"
-	@dao_beans_xml = "src/main/webapp/WEB-INF/config/dao-beans.xml"
-	@service_beans_xml = "src/main/webapp/WEB-INF/config/service-beans.xml"
-	@action_beans_xml = "src/main/webapp/WEB-INF/config/action-beans.xml"	
-	@hibernate_xml = "src/main/webapp/WEB-INF/config/hibernate-conf.xml"
-	@struts_xml = "src/main/resource/struts.xml"
-	@action_method_dir = "src/main/resource/"
-	@jsp_base_dir = "src/main/webapp/WEB-INF/jsp/views/"
-	@dao_test_dir = "src/test/java/dao/"
-
-	def self.getTableDef(className)
-		input = File.new("#{@model_dir}#{className}.hbm.xml","r")
-		doc = Document.new(input)
-		table_name = doc.elements["*/class"].attributes["name"].split(".").last
-		table_id = doc.elements["*/class/id"].attributes["name"]
-		table_id_type = doc.elements["*/class/id"].attributes["type"].split(".").last
-		columns = []
-		columns.push([table_id,table_id_type])
-		#解析表字段
-		doc.elements.each("*/class/property") do |node|
-			name = node.attributes["name"]
-			type = node.attributes["type"].split(".").last
-			type = "Date" if type == "Timestamp"
-			columns.push([name,type])
-		end
-		#解析表关系：多对一
-		doc.elements.each("*/class/many-to-one") do |node|
-			name = node.attributes["name"]
-			type = node.attributes["class"].split(".").last
-			columns.push([name,type])
-		end
-		#解析表关系：一对多
-		doc.elements.each("*/class/one-to-many") do |node|
-			name = node.attributes["name"]
-			type = node.attributes["class"].split(".").last
-			columns.push([name,type])
-		end
-		#解析表关系：多对多
-		doc.elements.each("*/class/set/many-to-many") do |node|
-			classtype = node.attributes["class"].split(".").last
-			name = classtype+"s"	
-			type = "Set<#{classtype}>"
-			columns.push([name,type])
-		end
-		return Table.new(table_name,columns)
-	end	
-
-	def self.genaratorModel(className)
-		@@bean = getTableDef(className)
-		output = File.new("#{@model_dir}#{className}.java","w+")
-		File.open(File.expand_path("#{@temp_dirs[:model]}/modelClass.erb", __FILE__)) { |fh| 
-	   		template = ERB.new(fh.read) 
-	   		output.print template.result(binding)   
-		}
-		puts "#{CREATE} #{@model_dir}#{className}.java"
-	end
-
-	def self.genaratorDao(className)
-		output = File.new("#{@dao_dir}#{className}Dao.java","w+")
-		File.open(File.expand_path("#{@temp_dirs[:dao]}/daoClass.erb", __FILE__)) { |fh| 
-	   		template = ERB.new(fh.read) 
-	   		output.print template.result(binding)   
-		}
-		puts "#{CREATE} #{@dao_dir}#{className}Dao.java"
-	end
-
-	def self.genaratorDaoTestCase(className)
-		@@bean = getTableDef(className)
-		output = File.new("#{@dao_test_dir}#{className}DaoTest.java","w+")
-		File.open(File.expand_path("#{@temp_dirs[:dao]}/testDaoClass.erb", __FILE__)) { |fh| 
-	   		template = ERB.new(fh.read) 
-	   		output.print template.result(binding)   
-		}
-		puts "#{CREATE} #{@dao_test_dir}#{className}DaoTest.java"
-	end
-
-	def self.genaratorDaoImpl(className)
-		output = File.new("#{@dao_impl_dir}#{className}DaoImpl.java","w+")
-		File.open(File.expand_path("#{@temp_dirs[:dao]}/daoImplClass.erb", __FILE__)) { |fh| 
-	   		template = ERB.new(fh.read) 
-	   		output.print template.result(binding)   
-		}
-		puts "#{CREATE} #{@dao_impl_dir}#{className}DaoImpl.java"
-	end
-
-	def self.genaratorService(className)
-		output = File.new("#{@service_dir}#{className}Service.java","w+")
-		File.open(File.expand_path("#{@temp_dirs[:service]}/serviceClass.erb", __FILE__)) { |fh| 
-	   		template = ERB.new(fh.read) 
-	   		output.print template.result(binding)   
-		}
-		puts "#{CREATE} #{@service_dir}#{className}Service.java"
-	end
-
-	def self.genaratorServiceImpl(className)
-		output = File.new("#{@service_impl_dir}#{className}ServiceImpl.java","w+")
-		File.open(File.expand_path("#{@temp_dirs[:service]}/serviceImplClass.erb", __FILE__)) { |fh| 
-	   		template = ERB.new(fh.read) 
-	   		output.print template.result(binding)   
-		}
-		puts "#{CREATE} #{@service_impl_dir}#{className}ServiceImpl.java"
-	end
-
-	def self.genaratorAction(className)
-		output = File.new("#{@action_dir}#{className}Action.java","w+")
-		File.open(File.expand_path("#{@temp_home}/action/actionClass.erb", __FILE__)) { |fh| 
-	   		template = ERB.new(fh.read) 
-	   		output.print template.result(binding)   
-		}
-		puts "#{CREATE} #{@action_dir}#{className}Action.java"
-	end	
-
-	def self.genaratorDaoConfig(className)
-	  	columns = []
-	 	if File.exist?(@dao_beans_xml)
-      		input = File.open(@dao_beans_xml)
-      		doc = REXML::Document.new(input)
-      		beansNode = doc.elements["beans"]
-      		doc.elements.each("*/bean") do |node|
-        		bId = node.attributes["id"]
-        		bClass = node.attributes["class"].split(".").last
-        		columns.push([bId,bClass])
-      		end
-  		end
-		columns.push(["#{@@bean.table_name}Dao","#{@@bean.table_name}DaoImpl"])
-		#去除重复元素
-		columns = columns.uniq
-		#p columns
-		output = File.new(@dao_beans_xml,"w+")
-		File.open(File.expand_path("#{@temp_dirs[:base_config]}/daoConfig.erb", __FILE__)) { |fh| 
-	   		template = ERB.new(fh.read) 
-	   		output.print template.result(binding)   
-		}
-		puts "#{UPDATE} #{@dao_beans_xml}"
-	end
-
-	def self.genaratorServiceConfig(className)
-	  columns = []
-	  if File.exist?(@service_beans_xml)
-		  	input = File.open(@service_beans_xml)
-		  	doc = REXML::Document.new(input)
-		  	beansNode = doc.elements["beans"]
-		  	doc.elements.each("*/bean") do |node|
-			  	bId = node.attributes["id"]
-			  	bClass = node.attributes["class"].split(".").last
-			  	columns.push([bId,bClass])
-		  end
-	  end
-		columns.push(["#{@@bean.table_name}Service","#{@@bean.table_name}ServiceImpl"])
-		#去除重复元素
-		columns = columns.uniq
-		#p columns
-		output = File.new(@service_beans_xml,"w+")
-		File.open(File.expand_path("#{@temp_dirs[:base_config]}/serviceConfig.erb", __FILE__)) { |fh| 
-	   		template = ERB.new(fh.read) 
-	   		output.print template.result(binding)   
-		}
-		puts "#{UPDATE} #{@service_beans_xml}"
-	end	
-
-	def self.genaratorActionConfig(className)
-	  	columns = []
-	  	if File.exist?(@action_beans_xml)
-			input = File.open(@action_beans_xml)
-		  	doc = REXML::Document.new(input)
-		  	beansNode = doc.elements["beans"]
-		  	doc.elements.each("*/bean") do |node|
-			  	bId = node.attributes["id"]
-			  	bClass = node.attributes["class"].split(".").last
-			  	columns.push([bId,bClass])
+		def self.getTableDef(className)
+			input = File.new("#{@model_dir}#{className}.hbm.xml","r")
+			doc = Document.new(input)
+			table_name = doc.elements["*/class"].attributes["name"].split(".").last
+			table_id = doc.elements["*/class/id"].attributes["name"]
+			table_id_type = doc.elements["*/class/id"].attributes["type"].split(".").last
+			columns = []
+			columns.push([table_id,table_id_type])
+			#解析表字段
+			doc.elements.each("*/class/property") do |node|
+				name = node.attributes["name"]
+				type = node.attributes["type"].split(".").last
+				type = "Date" if type == "Timestamp"
+				columns.push([name,type])
 			end
-		end
-		columns.push(["#{@@bean.table_name}Action","#{@@bean.table_name}Action"])
-		#去除重复元素
-		columns = columns.uniq
-		#p columns
-		output = File.new(@action_beans_xml,"w+")
-		File.open(File.expand_path("#{@temp_dirs[:base_config]}/actionConfig.erb", __FILE__)) { |fh| 
-	   		template = ERB.new(fh.read) 
-	   		output.print template.result(binding)   
-		}
-		puts "#{UPDATE} #{@action_beans_xml}"
-	end
+			#解析表关系：多对一
+			doc.elements.each("*/class/many-to-one") do |node|
+				name = node.attributes["name"]
+				type = node.attributes["class"].split(".").last
+				columns.push([name,type])
+			end
+			#解析表关系：一对多
+			doc.elements.each("*/class/one-to-many") do |node|
+				name = node.attributes["name"]
+				type = node.attributes["class"].split(".").last
+				columns.push([name,type])
+			end
+			#解析表关系：多对多
+			doc.elements.each("*/class/set/many-to-many") do |node|
+				classtype = node.attributes["class"].split(".").last
+				name = classtype+"s"	
+				type = "Set<#{classtype}>"
+				columns.push([name,type])
+			end
+			return Table.new(table_name,columns)
+		end	
 
-	def self.genaratorHibernateConfig(className)
-	  	columns = []
-	  	if File.exist?(@hibernate_xml)
-		  	input = File.open(@hibernate_xml)
-		  	doc = REXML::Document.new(input)
-		  	beansNode = doc.elements["beans"]
-		  	doc.elements.each("*/bean/property/list/value") do |node|
-			  	ormFile = node.text.split("/").last
-			  	columns.push(ormFile) if ormFile.include?(".")
-		  	end
-	  	end
-		columns.push("#{@@bean.table_name}.hbm.xml")
-		#去除重复元素
-		columns = columns.uniq
-		output = File.new(@hibernate_xml,"w+")
-		File.open(File.expand_path("#{@temp_dirs[:base_config]}/hibernateConfig.erb", __FILE__)) { |fh| 
-	   		template = ERB.new(fh.read) 
-	   		output.print template.result(binding)   
-		}
-		puts "#{UPDATE} #{@hibernate_xml}"
-	end
-
-	def self.genaratorStrutsConfig(className)
-		output = File.new("#{@action_method_dir}#{className}-struts.xml","w+")
-		File.open(File.expand_path("#{@temp_dirs[:base_config]}/strutsConfig.erb", __FILE__)) { |fh| 
-	   		template = ERB.new(fh.read) 
-	   		output.print template.result(binding)
-		}
-		puts "#{CREATE} #{@action_method_dir}#{className}-struts.xml"
-		columns = []
-		if File.exist?(@struts_xml)
-		  	input = File.open(@struts_xml)
-		  	doc = REXML::Document.new(input)
-		  	doc.elements.each("*/include") do |node|
-			  	oldFile = node.attributes["file"]
-			  	columns.push(oldFile) if oldFile.include?(".")
-		  	end
-	  	end
-		columns.push("#{className}-struts.xml")
-		#去除重复元素
-		columns = columns.uniq
-		addoutput = File.new(@struts_xml,"w+")
-		File.open(File.expand_path("#{@temp_dirs[:base_config]}/strutsBaseConfig.erb", __FILE__)) { |fh| 
-	   		template = ERB.new(fh.read) 
-	   		addoutput.print template.result(binding)   
-		}
-		puts "#{UPDATE} #{@struts_xml}"
-	end
-
-	def self.genaratorJspScaffold(className)
-		#首字母小写
-		className = className[0].downcase << className[1,className.length]
-		if(File.exist?("#{@jsp_base_dir}#{className}"))
-  			puts "目录已经存在！"
- 		else
- 			Dir.mkdir("#{@jsp_base_dir}#{className}")
-			puts "#{CREATE} #{@jsp_base_dir}#{className}"
- 		end
- 		#默认的jsp页面K|V
- 		def_jsp = {
- 			"#{@temp_dirs[:view]}/jspList.erb" => "#{@jsp_base_dir}#{className}/#{className}List.jsp",
- 			"#{@temp_dirs[:view]}/jspView.erb" => "#{@jsp_base_dir}#{className}/#{className}.jsp",
- 			"#{@temp_dirs[:view]}/jspNew.erb"  => "#{@jsp_base_dir}#{className}/#{className}New.jsp",
- 			"#{@temp_dirs[:view]}/jspEdit.erb" => "#{@jsp_base_dir}#{className}/#{className}Edit.jsp"
- 		}
- 		def_jsp.each do |template_file, project_file|
- 			jsp_file = File.new(project_file,"w+")
- 			jsp_file.print("<%@ page contentType='text/html; charset=UTF-8'%>
-<%@ taglib uri='/struts-tags' prefix='s'%>
-")
-			File.open(File.expand_path(template_file, __FILE__)) { |fh| 
-	   			template = ERB.new(fh.read) 
-	   			jsp_file.print template.result(binding)   
+		def self.genaratorModel(className)
+			@@bean = getTableDef(className)
+			output = File.new("#{@model_dir}#{className}.java","w+")
+			File.open(File.expand_path("#{@temp_dirs[:model]}/modelClass.erb", __FILE__)) { |fh| 
+		   		template = ERB.new(fh.read) 
+		   		output.print template.result(binding)   
 			}
-			puts "#{CREATE} #{project_file}"
+			puts "#{CREATE} #{@model_dir}#{className}.java"
 		end
-	end
 
-	def self.searchModelName
-		if self.isInProjectDir
-			puts "说明:带#{FORK}标记的表示已存在该模型的类文件（重复执行将覆盖原有代码),带#{RIGHT}标记的表示不存在"
-			puts "  可用于生成脚手架的ModelName如下:"
-			Dir.glob("#{@model_dir}*.hbm.xml").each do | file |
-				begin 
-					modelName = file.split("/").last.split(".").first
-					modelClassFileName = "#{@model_dir}#{modelName}.java"
-					File.new(modelClassFileName)
-					puts "    #{modelName} #{FORK}"
-				rescue Exception => e
-					puts "    #{modelName} #{RIGHT}"
+		def self.genaratorDao(className)
+			output = File.new("#{@dao_dir}#{className}Dao.java","w+")
+			File.open(File.expand_path("#{@temp_dirs[:dao]}/daoClass.erb", __FILE__)) { |fh| 
+		   		template = ERB.new(fh.read) 
+		   		output.print template.result(binding)   
+			}
+			puts "#{CREATE} #{@dao_dir}#{className}Dao.java"
+		end
+
+		def self.genaratorDaoTestCase(className)
+			@@bean = getTableDef(className)
+			output = File.new("#{@dao_test_dir}#{className}DaoTest.java","w+")
+			File.open(File.expand_path("#{@temp_dirs[:dao]}/testDaoClass.erb", __FILE__)) { |fh| 
+		   		template = ERB.new(fh.read) 
+		   		output.print template.result(binding)   
+			}
+			puts "#{CREATE} #{@dao_test_dir}#{className}DaoTest.java"
+		end
+
+		def self.genaratorDaoImpl(className)
+			output = File.new("#{@dao_impl_dir}#{className}DaoImpl.java","w+")
+			File.open(File.expand_path("#{@temp_dirs[:dao]}/daoImplClass.erb", __FILE__)) { |fh| 
+		   		template = ERB.new(fh.read) 
+		   		output.print template.result(binding)   
+			}
+			puts "#{CREATE} #{@dao_impl_dir}#{className}DaoImpl.java"
+		end
+
+		def self.genaratorService(className)
+			output = File.new("#{@service_dir}#{className}Service.java","w+")
+			File.open(File.expand_path("#{@temp_dirs[:service]}/serviceClass.erb", __FILE__)) { |fh| 
+		   		template = ERB.new(fh.read) 
+		   		output.print template.result(binding)   
+			}
+			puts "#{CREATE} #{@service_dir}#{className}Service.java"
+		end
+
+		def self.genaratorServiceImpl(className)
+			output = File.new("#{@service_impl_dir}#{className}ServiceImpl.java","w+")
+			File.open(File.expand_path("#{@temp_dirs[:service]}/serviceImplClass.erb", __FILE__)) { |fh| 
+		   		template = ERB.new(fh.read) 
+		   		output.print template.result(binding)   
+			}
+			puts "#{CREATE} #{@service_impl_dir}#{className}ServiceImpl.java"
+		end
+
+		def self.genaratorAction(className)
+			output = File.new("#{@action_dir}#{className}Action.java","w+")
+			File.open(File.expand_path("#{@temp_home}/action/actionClass.erb", __FILE__)) { |fh| 
+		   		template = ERB.new(fh.read) 
+		   		output.print template.result(binding)   
+			}
+			puts "#{CREATE} #{@action_dir}#{className}Action.java"
+		end	
+
+		def self.genaratorDaoConfig(className)
+		  	columns = []
+		 	if File.exist?(@dao_beans_xml)
+	      		input = File.open(@dao_beans_xml)
+	      		doc = REXML::Document.new(input)
+	      		beansNode = doc.elements["beans"]
+	      		doc.elements.each("*/bean") do |node|
+	        		bId = node.attributes["id"]
+	        		bClass = node.attributes["class"].split(".").last
+	        		columns.push([bId,bClass])
+	      		end
+	  		end
+			columns.push(["#{@@bean.table_name}Dao","#{@@bean.table_name}DaoImpl"])
+			#去除重复元素
+			columns = columns.uniq
+			#p columns
+			output = File.new(@dao_beans_xml,"w+")
+			File.open(File.expand_path("#{@temp_dirs[:base_config]}/daoConfig.erb", __FILE__)) { |fh| 
+		   		template = ERB.new(fh.read) 
+		   		output.print template.result(binding)   
+			}
+			puts "#{UPDATE} #{@dao_beans_xml}"
+		end
+
+		def self.genaratorServiceConfig(className)
+		  columns = []
+		  if File.exist?(@service_beans_xml)
+			  	input = File.open(@service_beans_xml)
+			  	doc = REXML::Document.new(input)
+			  	beansNode = doc.elements["beans"]
+			  	doc.elements.each("*/bean") do |node|
+				  	bId = node.attributes["id"]
+				  	bClass = node.attributes["class"].split(".").last
+				  	columns.push([bId,bClass])
+			  end
+		  end
+			columns.push(["#{@@bean.table_name}Service","#{@@bean.table_name}ServiceImpl"])
+			#去除重复元素
+			columns = columns.uniq
+			#p columns
+			output = File.new(@service_beans_xml,"w+")
+			File.open(File.expand_path("#{@temp_dirs[:base_config]}/serviceConfig.erb", __FILE__)) { |fh| 
+		   		template = ERB.new(fh.read) 
+		   		output.print template.result(binding)   
+			}
+			puts "#{UPDATE} #{@service_beans_xml}"
+		end	
+
+		def self.genaratorActionConfig(className)
+		  	columns = []
+		  	if File.exist?(@action_beans_xml)
+				input = File.open(@action_beans_xml)
+			  	doc = REXML::Document.new(input)
+			  	beansNode = doc.elements["beans"]
+			  	doc.elements.each("*/bean") do |node|
+				  	bId = node.attributes["id"]
+				  	bClass = node.attributes["class"].split(".").last
+				  	columns.push([bId,bClass])
+				end
+			end
+			columns.push(["#{@@bean.table_name}Action","#{@@bean.table_name}Action"])
+			#去除重复元素
+			columns = columns.uniq
+			#p columns
+			output = File.new(@action_beans_xml,"w+")
+			File.open(File.expand_path("#{@temp_dirs[:base_config]}/actionConfig.erb", __FILE__)) { |fh| 
+		   		template = ERB.new(fh.read) 
+		   		output.print template.result(binding)   
+			}
+			puts "#{UPDATE} #{@action_beans_xml}"
+		end
+
+		def self.genaratorHibernateConfig(className)
+		  	columns = []
+		  	if File.exist?(@hibernate_xml)
+			  	input = File.open(@hibernate_xml)
+			  	doc = REXML::Document.new(input)
+			  	beansNode = doc.elements["beans"]
+			  	doc.elements.each("*/bean/property/list/value") do |node|
+				  	ormFile = node.text.split("/").last
+				  	columns.push(ormFile) if ormFile.include?(".")
+			  	end
+		  	end
+			columns.push("#{@@bean.table_name}.hbm.xml")
+			#去除重复元素
+			columns = columns.uniq
+			output = File.new(@hibernate_xml,"w+")
+			File.open(File.expand_path("#{@temp_dirs[:base_config]}/hibernateConfig.erb", __FILE__)) { |fh| 
+		   		template = ERB.new(fh.read) 
+		   		output.print template.result(binding)   
+			}
+			puts "#{UPDATE} #{@hibernate_xml}"
+		end
+
+		def self.genaratorStrutsConfig(className)
+			output = File.new("#{@action_method_dir}#{className}-struts.xml","w+")
+			File.open(File.expand_path("#{@temp_dirs[:base_config]}/strutsConfig.erb", __FILE__)) { |fh| 
+		   		template = ERB.new(fh.read) 
+		   		output.print template.result(binding)
+			}
+			puts "#{CREATE} #{@action_method_dir}#{className}-struts.xml"
+			columns = []
+			if File.exist?(@struts_xml)
+			  	input = File.open(@struts_xml)
+			  	doc = REXML::Document.new(input)
+			  	doc.elements.each("*/include") do |node|
+				  	oldFile = node.attributes["file"]
+				  	columns.push(oldFile) if oldFile.include?(".")
+			  	end
+		  	end
+			columns.push("#{className}-struts.xml")
+			#去除重复元素
+			columns = columns.uniq
+			addoutput = File.new(@struts_xml,"w+")
+			File.open(File.expand_path("#{@temp_dirs[:base_config]}/strutsBaseConfig.erb", __FILE__)) { |fh| 
+		   		template = ERB.new(fh.read) 
+		   		addoutput.print template.result(binding)   
+			}
+			puts "#{UPDATE} #{@struts_xml}"
+		end
+
+		def self.genaratorJspScaffold(className)
+			#首字母小写
+			className = className[0].downcase << className[1,className.length]
+			if(File.exist?("#{@jsp_base_dir}#{className}"))
+	  			puts "目录已经存在！"
+	 		else
+	 			Dir.mkdir("#{@jsp_base_dir}#{className}")
+				puts "#{CREATE} #{@jsp_base_dir}#{className}"
+	 		end
+	 		#默认的jsp页面K|V
+	 		def_jsp = {
+	 			"#{@temp_dirs[:view]}/jspList.erb" => "#{@jsp_base_dir}#{className}/#{className}List.jsp",
+	 			"#{@temp_dirs[:view]}/jspView.erb" => "#{@jsp_base_dir}#{className}/#{className}.jsp",
+	 			"#{@temp_dirs[:view]}/jspNew.erb"  => "#{@jsp_base_dir}#{className}/#{className}New.jsp",
+	 			"#{@temp_dirs[:view]}/jspEdit.erb" => "#{@jsp_base_dir}#{className}/#{className}Edit.jsp"
+	 		}
+	 		def_jsp.each do |template_file, project_file|
+	 			jsp_file = File.new(project_file,"w+")
+	 			jsp_file.print(@jsp_declare)
+				File.open(File.expand_path(template_file, __FILE__)) { |fh| 
+		   			template = ERB.new(fh.read) 
+		   			jsp_file.print template.result(binding)   
+				}
+				puts "#{CREATE} #{project_file}"
+			end
+		end
+
+		def self.searchModelName
+			if self.isInProjectDir
+				puts "说明:带#{FORK}标记的表示已存在该模型的类文件（重复执行将覆盖原有代码),带#{RIGHT}标记的表示不存在"
+				puts "  可用于生成脚手架的ModelName如下:"
+				Dir.glob("#{@model_dir}*.hbm.xml").each do | file |
+					begin 
+						modelName = file.split("/").last.split(".").first
+						modelClassFileName = "#{@model_dir}#{modelName}.java"
+						File.new(modelClassFileName)
+						puts "    #{modelName} #{FORK}"
+					rescue Exception => e
+						puts "    #{modelName} #{RIGHT}"
+					end
 				end
 			end
 		end
-	end
 
-	def self.genaratorAllDaoTestCase
-		Dir.glob("#{@model_dir}*.hbm.xml").each do | file |
-			genaratorDaoTestCase(file.split("/").last.split(".").first)
+		def self.genaratorAllDaoTestCase
+			Dir.glob("#{@model_dir}*.hbm.xml").each do | file |
+				genaratorDaoTestCase(file.split("/").last.split(".").first)
+			end
 		end
-	end
 
-	def self.isInProjectDir
-		@@projectName
-	end
+		def self.isInProjectDir
+			@@projectName
+		end
 
-	def self.isModelFileExist(modelName)
-		if self.isInProjectDir 
-			begin
-				File.new("#{@model_dir}#{modelName}.hbm.xml")
-			rescue Exception => e
-				puts "找不到文件 #{@model_dir}#{modelName}.hbm.xml"
-				puts "请确认你输入的参数在下列中:"
-				Dir.glob("#{@model_dir}*.hbm.xml").each do | file |
-					puts file.split("/").last.split(".").first
+		def self.isModelFileExist(modelName)
+			if self.isInProjectDir 
+				begin
+					File.new("#{@model_dir}#{modelName}.hbm.xml")
+				rescue Exception => e
+					puts "找不到文件 #{@model_dir}#{modelName}.hbm.xml"
+					puts "请确认你输入的参数在下列中:"
+					Dir.glob("#{@model_dir}*.hbm.xml").each do | file |
+						puts file.split("/").last.split(".").first
+					end
 				end
+			end
+		end
+
+		def self.genaratorAll(className)
+			if self.isModelFileExist(className)
+				genaratorModel(className)
+				genaratorDao(className)
+				genaratorDaoImpl(className)
+				genaratorService(className)	
+				genaratorServiceImpl(className)
+				genaratorAction(className)
+				genaratorDaoConfig(className)
+				genaratorServiceConfig(className)
+				genaratorActionConfig(className)
+				genaratorHibernateConfig(className)
+				genaratorStrutsConfig(className)
+				genaratorJspScaffold(className)
+			end
+		end
+
+		def self.removeAll(className)
+			if self.isModelFileExist(className)
+				File.delete("#{@model_dir}#{className}.java")
+				puts "#{DELETE} #{@model_dir}#{className}.java"
+				File.delete("#{@dao_dir}#{className}Dao.java")
+				puts "#{DELETE} #{@dao_dir}#{className}Dao.java"
+				File.delete("#{@dao_impl_dir}#{className}DaoImpl.java")
+				puts "#{DELETE} #{@dao_impl_dir}#{className}DaoImpl.java"
+				File.delete("#{@service_dir}#{className}Service.java")
+				puts "#{DELETE} #{@service_dir}#{className}Service.java"
+				File.delete("#{@action_dir}#{className}Action.java")
+				puts "#{DELETE} #{@action_dir}#{className}Action.java"
+				File.delete("#{@action_method_dir}#{className}-struts.xml")
+				puts "#{DELETE} #{@action_method_dir}#{className}-struts.xml"
+				File.delete("#{@service_impl_dir}#{className}ServiceImpl.java")
+				puts "#{DELETE} #{@service_impl_dir}#{className}ServiceImpl.java"
+				File.delete("#{@jsp_base_dir}#{className}/#{className}List.jsp")
+				puts "#{DELETE} #{@jsp_base_dir}#{className}/#{className}List.jsp"
+				File.delete("#{@jsp_base_dir}#{className}/#{className}New.jsp")
+				puts "#{DELETE} #{@jsp_base_dir}#{className}/#{className}New.jsp"
+				File.delete("#{@jsp_base_dir}#{className}/#{className}.jsp")
+				puts "#{DELETE} #{@jsp_base_dir}#{className}/#{className}.jsp"
+				File.delete("#{@jsp_base_dir}#{className}/#{className}Edit.jsp")
+				puts "#{DELETE} #{@jsp_base_dir}#{className}/#{className}Edit.jsp"
+				Dir.delete("#{@jsp_base_dir}#{className}")
+				puts "#{DELETE} #{@jsp_base_dir}#{className}"
+			end
+		end
+
+		def self.genaratorProject(projectName)
+			@@projectName = projectName
+
+			#检测是否正确设置MSSH_HOME环境变量
+			unless ENV["MSSH_HOME"]
+				puts "请检查MSSH_HOME环境变量是否正确."
 				return
 			end
+			
+			#默认的项目目录结构K|V
+			def_dirs = {
+				:project_root_dir  => "#{projectName}",
+				:model_dir         => "#{projectName}/src/main/java/cn/#{projectName}/model",
+				:dao_dir           => "#{projectName}/src/main/java/cn/#{projectName}/dao",
+				:dao_impl_dir      => "#{projectName}/src/main/java/cn/#{projectName}/dao/impl",
+				:service_dir       => "#{projectName}/src/main/java/cn/#{projectName}/service",
+				:service_impl_dir  => "#{projectName}/src/main/java/cn/#{projectName}/service/impl",
+				:action_dir        => "#{projectName}/src/main/java/cn/#{projectName}/web",
+				:action_config_dir => "#{projectName}/src/main/resource",
+				:util_dir          => "#{projectName}/src/main/java/cn/#{projectName}/util",
+				:exception_dir     => "#{projectName}/src/main/java/cn/#{projectName}/exception",
+				:framework_dir     => "#{projectName}/src/main/java/cn/#{projectName}/framework",
+				:css_dir           => "#{projectName}/src/main/webapp/css",
+				:images_dir        => "#{projectName}/src/main/webapp/images",
+				:js_dir            => "#{projectName}/src/main/webapp/js",
+				:webinf_dir        => "#{projectName}/src/main/webapp/WEB-INF",
+				:jsp_base_dir      => "#{projectName}/src/main/webapp/WEB-INF/jsp/views",
+				:jsp_layout_dir    => "#{projectName}/src/main/webapp/WEB-INF/jsp/layout",
+				:config_dir        => "#{projectName}/src/main/webapp/WEB-INF/config",
+				:test_dao_dir      => "#{projectName}/src/test/java/dao",
+				:test_util_dir     => "#{projectName}/src/test/java/util",
+				:test_resource_dir => "#{projectName}/src/test/java/resource"}
+
+			#初始化MAVEN项目目录结构
+			def_dirs.each_value do | dir | 
+				FileUtils.makedirs(dir)
+				puts "#{CREATE} #{dir}"
+			end
+
+			#模版与目标文件映射结构K|V
+			config_files = {
+				"#{@temp_dirs[:base_config]}/applicationContext.erb"             => "#{def_dirs[:config_dir]}/applicationContext.xml",
+				"#{@temp_dirs[:base_config]}/hibernateConfig.erb"                => "#{def_dirs[:config_dir]}/hibernate-conf.xml",
+				"#{@temp_dirs[:base_config]}/strutsBaseConfig.erb"               => "#{def_dirs[:action_config_dir]}/struts.xml",
+				"#{@temp_dirs[:base_config]}/actionConfig.erb"                   => "#{def_dirs[:config_dir]}/action-beans.xml",
+				"#{@temp_dirs[:base_config]}/serviceConfig.erb"                  => "#{def_dirs[:config_dir]}/service-beans.xml",
+				"#{@temp_dirs[:base_config]}/daoConfig.erb"                      => "#{def_dirs[:config_dir]}/dao-beans.xml",
+				"#{@temp_dirs[:base_config]}/webConfig.erb"                      => "#{def_dirs[:webinf_dir]}/web.xml",
+				"#{@temp_dirs[:base_config]}/pomConfig.erb"                      => "#{projectName}/pom.xml",
+				"#{@temp_dirs[:base_config]}/projectConfig.erb"                  => "#{projectName}/.project",
+				"#{@temp_dirs[:base_config]}/urlConfig.erb"                      => "#{def_dirs[:webinf_dir]}/urlrewrite.xml",
+				"#{@temp_dirs[:other]}/log4j.erb"                                => "#{def_dirs[:webinf_dir]}/log4j.properties",
+				"#{@temp_dirs[:base_config]}/db_config_properties.erb"           => "#{def_dirs[:config_dir]}/#{projectName}_configure.properties",
+				"#{@temp_dirs[:base_config]}/dbConfig.erb"                       => "#{def_dirs[:config_dir]}/db-beans.xml",
+				"#{@temp_dirs[:other]}/struts-tags.erb"                          => "#{def_dirs[:webinf_dir]}/struts-tags.tld",
+				"#{@temp_dirs[:other]}/pages-tags.erb"                           => "#{def_dirs[:webinf_dir]}/pages-tags.tld",
+				"#{@temp_dirs[:framework]}/pageTag.erb"                          => "#{def_dirs[:framework_dir]}/PageTag.java",
+				"#{@temp_dirs[:framework]}/pages.erb"                            => "#{def_dirs[:framework_dir]}/Pages.java",
+				"#{@temp_dirs[:framework]}/abstractManager.erb"                  => "#{def_dirs[:framework_dir]}/AbstractManager.java",
+				"#{@temp_dirs[:framework]}/pageFetch.erb"                        => "#{def_dirs[:framework_dir]}/PageFetch.java",
+				"#{@temp_dirs[:framework]}/baseAction.erb"                       => "#{def_dirs[:framework_dir]}/BaseAction.java",
+				"#{@temp_dirs[:framework]}/springContextUtil.erb"                => "#{def_dirs[:framework_dir]}/SpringContextUtil.java",
+				"#{@temp_dirs[:framework]}/abstractManager.erb"                  => "#{def_dirs[:framework_dir]}/AbstractManager.java",
+				"#{@temp_dirs[:framework]}/aroundAdviceInterceptor.erb"          => "#{def_dirs[:framework_dir]}/AroundAdviceInterceptor.java",
+				"#{@temp_dirs[:framework]}/customerContextLoaderListener.erb"    => "#{def_dirs[:framework_dir]}/CustomerContextLoaderListener.java",
+				"#{@temp_dirs[:framework]}/userInfo.erb"                         => "#{def_dirs[:framework_dir]}/UserInfo.java",
+				"#{@temp_dirs[:framework]}/tools.erb"                            => "#{def_dirs[:util_dir]}/Tools.java",
+				"#{@temp_dirs[:util]}/baseConstant.erb"                          => "#{def_dirs[:util_dir]}/BaseConstant.java",
+				"#{@temp_dirs[:util]}/actionTools.erb"                           => "#{def_dirs[:util_dir]}/ActionTools.java",
+				"#{@temp_dirs[:util]}/dateTools.erb"                             => "#{def_dirs[:util_dir]}/DateTools.java",
+				"#{@temp_dirs[:dao]}/commonDao.erb"                              => "#{def_dirs[:dao_dir]}/CommonDao.java",
+				"#{@temp_dirs[:dao]}/commonDaoImpl.erb"                          => "#{def_dirs[:dao_dir]}/CommonDaoImpl.java",
+				"#{@temp_dirs[:service]}/commonService.erb"                      => "#{def_dirs[:service_dir]}/CommonService.java",
+				"#{@temp_dirs[:service]}/commonServiceImpl.erb"                  => "#{def_dirs[:service_impl_dir]}/CommonServiceImpl.java",
+				"#{@temp_dirs[:model_config]}/SysFunction.hbm.erb"               => "#{def_dirs[:model_dir]}/SysFunction.hbm.xml",
+				"#{@temp_dirs[:model_config]}/SysRole.hbm.erb"                   => "#{def_dirs[:model_dir]}/SysRole.hbm.xml",
+				"#{@temp_dirs[:model_config]}/SysOperator.hbm.erb"               => "#{def_dirs[:model_dir]}/SysOperator.hbm.xml",
+				"#{@temp_dirs[:model_config]}/SysOperatorLog.hbm.erb"            => "#{def_dirs[:model_dir]}/SysOperatorLog.hbm.xml",
+				"#{@temp_dirs[:model_config]}/SysDict.hbm.erb"                   => "#{def_dirs[:model_dir]}/SysDict.hbm.xml",
+				"#{@temp_dirs[:exception]}/BusinessException.erb"                => "#{def_dirs[:exception_dir]}/BusinessException.java",
+				"#{@temp_dirs[:exception]}/DataAccessException.erb"              => "#{def_dirs[:exception_dir]}/DataAccessException.java",
+				"#{@temp_dirs[:exception]}/NoneSessionFoundException.erb"        => "#{def_dirs[:exception_dir]}/NoneSessionFoundException.java",
+				"#{@temp_dirs[:exception]}/UnAuthenrizationException.erb"        => "#{def_dirs[:exception_dir]}/UnAuthenrizationException.java",
+				"#{@temp_dirs[:exception]}/UnHandledException.erb"               => "#{def_dirs[:exception_dir]}/UnHandledException.java",
+				"#{@temp_dirs[:third_res]}/bootstrap/bootstrap_css_v3.3.5.erb"   => "#{def_dirs[:css_dir]}/bootstrap.min.css",
+				"#{@temp_dirs[:view]}/layout.css.erb"                            => "#{def_dirs[:css_dir]}/layout.css",
+				"#{@temp_dirs[:third_res]}/bootstrap/bootstrap_js_v3.3.5.erb"    => "#{def_dirs[:js_dir]}/bootstrap.min.js",
+				"#{@temp_dirs[:third_res]}/bootstrap/bootstrap-paginator.js.erb" => "#{def_dirs[:js_dir]}/bootstrap-paginator.js",
+				"#{@temp_dirs[:third_res]}/jquery/jquery_v2.1.4.erb"             => "#{def_dirs[:js_dir]}/jquery.min.js",
+				"#{@temp_dirs[:third_res]}/jquery/jquery.form.erb"               => "#{def_dirs[:js_dir]}/jquery.form.js",
+				"#{@temp_dirs[:other]}/pageFetch.js.erb"                         => "#{def_dirs[:js_dir]}/pageFetch.js",
+				"#{@temp_dirs[:view]}/header.erb"                                => "#{def_dirs[:jsp_layout_dir]}/header.jsp",
+				"#{@temp_dirs[:view]}/left.erb"                                  => "#{def_dirs[:jsp_layout_dir]}/left.jsp",
+				"#{@temp_dirs[:view]}/page.erb"                                  => "#{def_dirs[:jsp_layout_dir]}/page.jsp",
+				"#{@temp_dirs[:view]}/footer.erb"                                => "#{def_dirs[:jsp_layout_dir]}/footer.jsp",
+			}
+
+			columns = []
+			#初始化项目依赖文件
+			config_files.each do |template_file, project_file|
+				file = File.new(project_file,"w+")
+				file.print(@jsp_declare) if project_file.include? "jsp"
+				File.open(File.expand_path(template_file, __FILE__)) { |fh| 
+		   			template = ERB.new(fh.read) 
+		   			file.print template.result(binding)
+				}	
+				puts "#{CREATE} #{project_file}"
+			end 
 		end
 	end
-
-	def self.genaratorAll(className)
-		if self.isModelFileExist(className)
-			genaratorModel(className)
-			genaratorDao(className)
-			genaratorDaoImpl(className)
-			genaratorService(className)	
-			genaratorServiceImpl(className)
-			genaratorAction(className)
-			genaratorDaoConfig(className)
-			genaratorServiceConfig(className)
-			genaratorActionConfig(className)
-			genaratorHibernateConfig(className)
-			genaratorStrutsConfig(className)
-			genaratorJspScaffold(className)
-		end
-	end
-
-	def self.removeAll(className)
-		if self.isModelFileExist(className)
-			File.delete("#{@model_dir}#{className}.java")
-			puts "#{DELETE} #{@model_dir}#{className}.java"
-			File.delete("#{@dao_dir}#{className}Dao.java")
-			puts "#{DELETE} #{@dao_dir}#{className}Dao.java"
-			File.delete("#{@dao_impl_dir}#{className}DaoImpl.java")
-			puts "#{DELETE} #{@dao_impl_dir}#{className}DaoImpl.java"
-			File.delete("#{@service_dir}#{className}Service.java")
-			puts "#{DELETE} #{@service_dir}#{className}Service.java"
-			File.delete("#{@action_dir}#{className}Action.java")
-			puts "#{DELETE} #{@action_dir}#{className}Action.java"
-			File.delete("#{@action_method_dir}#{className}-struts.xml")
-			puts "#{DELETE} #{@action_method_dir}#{className}-struts.xml"
-			File.delete("#{@service_impl_dir}#{className}ServiceImpl.java")
-			puts "#{DELETE} #{@service_impl_dir}#{className}ServiceImpl.java"
-			File.delete("#{@jsp_base_dir}#{className}/#{className}List.jsp")
-			puts "#{DELETE} #{@jsp_base_dir}#{className}/#{className}List.jsp"
-			File.delete("#{@jsp_base_dir}#{className}/#{className}New.jsp")
-			puts "#{DELETE} #{@jsp_base_dir}#{className}/#{className}New.jsp"
-			File.delete("#{@jsp_base_dir}#{className}/#{className}.jsp")
-			puts "#{DELETE} #{@jsp_base_dir}#{className}/#{className}.jsp"
-			File.delete("#{@jsp_base_dir}#{className}/#{className}Edit.jsp")
-			puts "#{DELETE} #{@jsp_base_dir}#{className}/#{className}Edit.jsp"
-			Dir.delete("#{@jsp_base_dir}#{className}")
-			puts "#{DELETE} #{@jsp_base_dir}#{className}"
-		end
-	end
-  
-  end
-
-
-	def self.genaratorProject(projectName)
-		@@projectName = projectName
-
-		#检测是否正确设置MSSH_HOME环境变量
-		unless ENV["MSSH_HOME"]
-			puts "请检查MSSH_HOME环境变量是否正确."
-			return
-		end
-		
-		#默认的项目目录结构K|V
-		def_dirs = {
-			:project_root_dir  => "#{projectName}",
-			:model_dir         => "#{projectName}/src/main/java/cn/#{projectName}/model",
-			:dao_dir           => "#{projectName}/src/main/java/cn/#{projectName}/dao",
-			:dao_impl_dir      => "#{projectName}/src/main/java/cn/#{projectName}/dao/impl",
-			:service_dir       => "#{projectName}/src/main/java/cn/#{projectName}/service",
-			:service_impl_dir  => "#{projectName}/src/main/java/cn/#{projectName}/service/impl",
-			:action_dir        => "#{projectName}/src/main/java/cn/#{projectName}/web",
-			:action_config_dir => "#{projectName}/src/main/resource",
-			:util_dir          => "#{projectName}/src/main/java/cn/#{projectName}/util",
-			:exception_dir     => "#{projectName}/src/main/java/cn/#{projectName}/exception",
-			:framework_dir     => "#{projectName}/src/main/java/cn/#{projectName}/framework",
-			:css_dir           => "#{projectName}/src/main/webapp/css",
-			:images_dir        => "#{projectName}/src/main/webapp/images",
-			:js_dir            => "#{projectName}/src/main/webapp/js",
-			:webinf_dir        => "#{projectName}/src/main/webapp/WEB-INF",
-			:jsp_base_dir      => "#{projectName}/src/main/webapp/WEB-INF/jsp/views",
-			:jsp_layout_dir    => "#{projectName}/src/main/webapp/WEB-INF/jsp/layout",
-			:config_dir        => "#{projectName}/src/main/webapp/WEB-INF/config",
-			:test_dao_dir      => "#{projectName}/src/test/java/dao",
-			:test_util_dir     => "#{projectName}/src/test/java/util",
-			:test_resource_dir => "#{projectName}/src/test/java/resource"}
-
-		#初始化MAVEN项目目录结构
-		def_dirs.each_value do | dir | 
-			FileUtils.makedirs(dir)
-			puts "#{CREATE} #{dir}"
-		end
-
-		#模版与目标文件映射结构K|V
-		config_files = {
-			"#{@temp_dirs[:base_config]}/applicationContext.erb"             => "#{def_dirs[:config_dir]}/applicationContext.xml",
-			"#{@temp_dirs[:base_config]}/hibernateConfig.erb"                => "#{def_dirs[:config_dir]}/hibernate-conf.xml",
-			"#{@temp_dirs[:base_config]}/strutsBaseConfig.erb"               => "#{def_dirs[:action_config_dir]}/struts.xml",
-			"#{@temp_dirs[:base_config]}/actionConfig.erb"                   => "#{def_dirs[:config_dir]}/action-beans.xml",
-			"#{@temp_dirs[:base_config]}/serviceConfig.erb"                  => "#{def_dirs[:config_dir]}/service-beans.xml",
-			"#{@temp_dirs[:base_config]}/daoConfig.erb"                      => "#{def_dirs[:config_dir]}/dao-beans.xml",
-			"#{@temp_dirs[:base_config]}/webConfig.erb"                      => "#{def_dirs[:webinf_dir]}/web.xml",
-			"#{@temp_dirs[:base_config]}/pomConfig.erb"                      => "#{projectName}/pom.xml",
-			"#{@temp_dirs[:base_config]}/projectConfig.erb"                  => "#{projectName}/.project",
-			"#{@temp_dirs[:base_config]}/urlConfig.erb"                      => "#{def_dirs[:webinf_dir]}/urlrewrite.xml",
-			"#{@temp_dirs[:other]}/log4j.erb"                                => "#{def_dirs[:webinf_dir]}/log4j.properties",
-			"#{@temp_dirs[:base_config]}/db_config_properties.erb"           => "#{def_dirs[:config_dir]}/#{projectName}_configure.properties",
-			"#{@temp_dirs[:base_config]}/dbConfig.erb"                       => "#{def_dirs[:config_dir]}/db-beans.xml",
-			"#{@temp_dirs[:other]}/struts-tags.erb"                          => "#{def_dirs[:webinf_dir]}/struts-tags.tld",
-			"#{@temp_dirs[:other]}/pages-tags.erb"                           => "#{def_dirs[:webinf_dir]}/pages-tags.tld",
-			"#{@temp_dirs[:framework]}/pageTag.erb"                          => "#{def_dirs[:framework_dir]}/PageTag.java",
-			"#{@temp_dirs[:framework]}/pages.erb"                            => "#{def_dirs[:framework_dir]}/Pages.java",
-			"#{@temp_dirs[:framework]}/abstractManager.erb"                  => "#{def_dirs[:framework_dir]}/AbstractManager.java",
-			"#{@temp_dirs[:framework]}/pageFetch.erb"                        => "#{def_dirs[:framework_dir]}/PageFetch.java",
-			"#{@temp_dirs[:framework]}/baseAction.erb"                       => "#{def_dirs[:framework_dir]}/BaseAction.java",
-			"#{@temp_dirs[:framework]}/springContextUtil.erb"                => "#{def_dirs[:framework_dir]}/SpringContextUtil.java",
-			"#{@temp_dirs[:framework]}/abstractManager.erb"                  => "#{def_dirs[:framework_dir]}/AbstractManager.java",
-			"#{@temp_dirs[:framework]}/aroundAdviceInterceptor.erb"          => "#{def_dirs[:framework_dir]}/AroundAdviceInterceptor.java",
-			"#{@temp_dirs[:framework]}/customerContextLoaderListener.erb"    => "#{def_dirs[:framework_dir]}/CustomerContextLoaderListener.java",
-			"#{@temp_dirs[:framework]}/userInfo.erb"                         => "#{def_dirs[:framework_dir]}/UserInfo.java",
-			"#{@temp_dirs[:framework]}/tools.erb"                            => "#{def_dirs[:util_dir]}/Tools.java",
-			"#{@temp_dirs[:util]}/baseConstant.erb"                          => "#{def_dirs[:util_dir]}/BaseConstant.java",
-			"#{@temp_dirs[:util]}/actionTools.erb"                           => "#{def_dirs[:util_dir]}/ActionTools.java",
-			"#{@temp_dirs[:util]}/dateTools.erb"                             => "#{def_dirs[:util_dir]}/DateTools.java",
-			"#{@temp_dirs[:dao]}/commonDao.erb"                              => "#{def_dirs[:dao_dir]}/CommonDao.java",
-			"#{@temp_dirs[:dao]}/commonDaoImpl.erb"                          => "#{def_dirs[:dao_dir]}/CommonDaoImpl.java",
-			"#{@temp_dirs[:service]}/commonService.erb"                      => "#{def_dirs[:service_dir]}/CommonService.java",
-			"#{@temp_dirs[:service]}/commonServiceImpl.erb"                  => "#{def_dirs[:service_impl_dir]}/CommonServiceImpl.java",
-			"#{@temp_dirs[:model_config]}/SysFunction.hbm.erb"               => "#{def_dirs[:model_dir]}/SysFunction.hbm.xml",
-			"#{@temp_dirs[:model_config]}/SysRole.hbm.erb"                   => "#{def_dirs[:model_dir]}/SysRole.hbm.xml",
-			"#{@temp_dirs[:model_config]}/SysOperator.hbm.erb"               => "#{def_dirs[:model_dir]}/SysOperator.hbm.xml",
-			"#{@temp_dirs[:model_config]}/SysOperatorLog.hbm.erb"            => "#{def_dirs[:model_dir]}/SysOperatorLog.hbm.xml",
-			"#{@temp_dirs[:model_config]}/SysDict.hbm.erb"                   => "#{def_dirs[:model_dir]}/SysDict.hbm.xml",
-			"#{@temp_dirs[:exception]}/BusinessException.erb"                => "#{def_dirs[:exception_dir]}/BusinessException.java",
-			"#{@temp_dirs[:exception]}/DataAccessException.erb"              => "#{def_dirs[:exception_dir]}/DataAccessException.java",
-			"#{@temp_dirs[:exception]}/NoneSessionFoundException.erb"        => "#{def_dirs[:exception_dir]}/NoneSessionFoundException.java",
-			"#{@temp_dirs[:exception]}/UnAuthenrizationException.erb"        => "#{def_dirs[:exception_dir]}/UnAuthenrizationException.java",
-			"#{@temp_dirs[:exception]}/UnHandledException.erb"               => "#{def_dirs[:exception_dir]}/UnHandledException.java",
-			"#{@temp_dirs[:third_res]}/bootstrap/bootstrap_css_v3.3.5.erb"   => "#{def_dirs[:css_dir]}/bootstrap.min.css",
-			"#{@temp_dirs[:view]}/layout.css.erb"                            => "#{def_dirs[:css_dir]}/layout.css",
-			"#{@temp_dirs[:third_res]}/bootstrap/bootstrap_js_v3.3.5.erb"    => "#{def_dirs[:js_dir]}/bootstrap.min.js",
-			"#{@temp_dirs[:third_res]}/bootstrap/bootstrap-paginator.js.erb" => "#{def_dirs[:js_dir]}/bootstrap-paginator.js",
-			"#{@temp_dirs[:third_res]}/jquery/jquery_v2.1.4.erb"             => "#{def_dirs[:js_dir]}/jquery.min.js",
-			"#{@temp_dirs[:third_res]}/jquery/jquery.form.erb"               => "#{def_dirs[:js_dir]}/jquery.form.js",
-			"#{@temp_dirs[:other]}/pageFetch.js.erb"                         => "#{def_dirs[:js_dir]}/pageFetch.js",
-			"#{@temp_dirs[:view]}/header.erb"                                => "#{def_dirs[:jsp_layout_dir]}/header.jsp",
-			"#{@temp_dirs[:view]}/left.erb"                                  => "#{def_dirs[:jsp_layout_dir]}/left.jsp",
-			"#{@temp_dirs[:view]}/page.erb"                                  => "#{def_dirs[:jsp_layout_dir]}/page.jsp",
-			"#{@temp_dirs[:view]}/footer.erb"                                => "#{def_dirs[:jsp_layout_dir]}/footer.jsp",
-		}
-
-		columns = []
-		#初始化项目依赖文件
-		config_files.each do |template_file, project_file|
-			file = File.new(project_file,"w+")
-			file.print(@jsp_declare) if project_file.include? "jsp"
-			File.open(File.expand_path(template_file, __FILE__)) { |fh| 
-	   			template = ERB.new(fh.read) 
-	   			file.print template.result(binding)
-			}	
-			puts "#{CREATE} #{project_file}"
-		end 
-	end
-
 end
 
 def help_info()
