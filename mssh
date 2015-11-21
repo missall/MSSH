@@ -38,6 +38,8 @@ module Mssh
   	CREATE = "\033[32m 创建 \033[0m"
   	UPDATE = "\033[33m 更新 \033[0m"
   	DELETE = "\033[31m 删除 \033[0m"
+	FORK   = "\033[31m × \033[0m"
+	RIGHT  = "\033[32m √ \033[0m"
   	
   	def self.getProjectConfig()
   		if File.exist?(".project")
@@ -45,13 +47,12 @@ module Mssh
   			doc = Document.new(project_file)
   			@@projectName = doc.elements["*/name"].text
   		else
-  			puts "找不到项目描述文件.请确认你当前目录是在项目根目录中"
+  			puts "请确认你的当前目录位于项目的根目录下"
   		end
   	end
 
   	@@projectName = self.getProjectConfig()
 
-	PROJECT_DIR = File.expand_path('../..',  __FILE__)
 	@model_dir = "src/main/java/cn/#{@@projectName}/model/"
 	@dao_dir = "src/main/java/cn/#{@@projectName}/dao/"
 	@dao_impl_dir = "src/main/java/cn/#{@@projectName}/dao/impl/"
@@ -67,8 +68,8 @@ module Mssh
 	@jsp_base_dir = "src/main/webapp/WEB-INF/jsp/views/"
 	@dao_test_dir = "src/test/java/dao/"
 
-	def self.getTableDef(table_name)
-		input = File.new("#{@model_dir}#{table_name}.hbm.xml","r")
+	def self.getTableDef(className)
+		input = File.new("#{@model_dir}#{className}.hbm.xml","r")
 		doc = Document.new(input)
 		table_name = doc.elements["*/class"].attributes["name"].split(".").last
 		table_id = doc.elements["*/class/id"].attributes["name"]
@@ -290,8 +291,8 @@ module Mssh
 		puts "#{UPDATE} #{@struts_xml}"
 	end
 
-	#TODO:需要添加前端jsp模板
 	def self.genaratorJspScaffold(className)
+		#首字母小写
 		className = className[0].downcase << className[1,className.length]
 		if(File.exist?("#{@jsp_base_dir}#{className}"))
   			puts "目录已经存在！"
@@ -299,56 +300,115 @@ module Mssh
  			Dir.mkdir("#{@jsp_base_dir}#{className}")
 			puts "#{CREATE} #{@jsp_base_dir}#{className}"
  		end
- 		jsp_list = File.new("#{@jsp_base_dir}#{className}/#{className}List.jsp","w+")
- 		jsp_list.print("<%@ page contentType='text/html; charset=UTF-8'%>
+ 		#默认的jsp页面K|V
+ 		def_jsp = {
+ 			"#{@temp_dirs[:view]}/jspList.erb" => "#{@jsp_base_dir}#{className}/#{className}List.jsp",
+ 			"#{@temp_dirs[:view]}/jspView.erb" => "#{@jsp_base_dir}#{className}/#{className}.jsp",
+ 			"#{@temp_dirs[:view]}/jspNew.erb"  => "#{@jsp_base_dir}#{className}/#{className}New.jsp",
+ 			"#{@temp_dirs[:view]}/jspEdit.erb" => "#{@jsp_base_dir}#{className}/#{className}Edit.jsp"
+ 		}
+ 		def_jsp.each do |template_file, project_file|
+ 			jsp_file = File.new(project_file,"w+")
+ 			jsp_file.print("<%@ page contentType='text/html; charset=UTF-8'%>
 <%@ taglib uri='/struts-tags' prefix='s'%>
 ")
-		File.open(File.expand_path("#{@temp_dirs[:view]}/jspList.erb", __FILE__)) { |fh| 
-	   		template = ERB.new(fh.read) 
-	   		jsp_list.print template.result(binding)   
-		}
-		puts "#{CREATE} #{@jsp_base_dir}#{className}/#{className}List.jsp"
-		jsp_view = File.new("#{@jsp_base_dir}#{className}/#{className}.jsp","w+")
-		jsp_view.print("<%@ page contentType='text/html; charset=UTF-8'%>
-<%@ taglib uri='/struts-tags' prefix='s'%>
-")		
-		File.open(File.expand_path("#{@temp_dirs[:view]}/jspView.erb", __FILE__)) { |fh| 
-	   		template = ERB.new(fh.read) 
-	   		jsp_view.print template.result(binding)   
-		}
-		puts "#{CREATE} #{@jsp_base_dir}#{className}/#{className}.jsp"
-		jsp_new = File.new("#{@jsp_base_dir}#{className}/#{className}New.jsp","w+")
-		jsp_new.print("<%@ page contentType='text/html; charset=UTF-8'%>
-<%@ taglib uri='/struts-tags' prefix='s'%>
-")
-		File.open(File.expand_path("#{@temp_dirs[:view]}/jspNew.erb", __FILE__)) { |fh| 
-	   		template = ERB.new(fh.read) 
-	   		jsp_new.print template.result(binding)   
-		}
-
-		puts "#{CREATE} #{@jsp_base_dir}#{className}/#{className}New.jsp"
-		
-		jsp_edit = File.new("#{@jsp_base_dir}#{className}/#{className}Edit.jsp","w+")
-		File.open(File.expand_path("#{@temp_dirs[:view]}/jspEdit.erb", __FILE__)) { |fh| 
-	   		template = ERB.new(fh.read) 
-	   		jsp_edit.print template.result(binding)   
-		}
-		puts "#{CREATE} #{@jsp_base_dir}#{className}/#{className}Eidt.jsp"
-	end
-
-	def self.searchModelName()
-		puts @model_dir
-		puts "可用于生成脚手架的ModelName如下:"
-		Dir.glob("#{@model_dir}*.hbm.xml").each do | file |
-			puts file.split("/").last.split(".").first
+			File.open(File.expand_path(template_file, __FILE__)) { |fh| 
+	   			template = ERB.new(fh.read) 
+	   			jsp_file.print template.result(binding)   
+			}
+			puts "#{CREATE} #{project_file}"
 		end
 	end
 
-	def self.genaratorAllDaoTestCase()
+	def self.searchModelName
+		if self.isInProjectDir
+			puts "说明:带#{FORK}标记的表示已存在该模型的类文件（重复执行将覆盖原有代码),带#{RIGHT}标记的表示不存在"
+			puts "  可用于生成脚手架的ModelName如下:"
+			Dir.glob("#{@model_dir}*.hbm.xml").each do | file |
+				begin 
+					modelName = file.split("/").last.split(".").first
+					modelClassFileName = "#{@model_dir}#{modelName}.java"
+					File.new(modelClassFileName)
+					puts "    #{modelName} #{FORK}"
+				rescue Exception => e
+					puts "    #{modelName} #{RIGHT}"
+				end
+			end
+		end
+	end
+
+	def self.genaratorAllDaoTestCase
 		Dir.glob("#{@model_dir}*.hbm.xml").each do | file |
 			genaratorDaoTestCase(file.split("/").last.split(".").first)
 		end
 	end
+
+	def self.isInProjectDir
+		@@projectName
+	end
+
+	def self.isModelFileExist(modelName)
+		if self.isInProjectDir 
+			begin
+				File.new("#{@model_dir}#{modelName}.hbm.xml")
+			rescue Exception => e
+				puts "找不到文件 #{@model_dir}#{modelName}.hbm.xml"
+				puts "请确认你输入的参数在下列中:"
+				Dir.glob("#{@model_dir}*.hbm.xml").each do | file |
+					puts file.split("/").last.split(".").first
+				end
+				return
+			end
+		end
+	end
+
+	def self.genaratorAll(className)
+		if self.isModelFileExist(className)
+			genaratorModel(className)
+			genaratorDao(className)
+			genaratorDaoImpl(className)
+			genaratorService(className)	
+			genaratorServiceImpl(className)
+			genaratorAction(className)
+			genaratorDaoConfig(className)
+			genaratorServiceConfig(className)
+			genaratorActionConfig(className)
+			genaratorHibernateConfig(className)
+			genaratorStrutsConfig(className)
+			genaratorJspScaffold(className)
+		end
+	end
+
+	def self.removeAll(className)
+		if self.isModelFileExist(className)
+			File.delete("#{@model_dir}#{className}.java")
+			puts "#{DELETE} #{@model_dir}#{className}.java"
+			File.delete("#{@dao_dir}#{className}Dao.java")
+			puts "#{DELETE} #{@dao_dir}#{className}Dao.java"
+			File.delete("#{@dao_impl_dir}#{className}DaoImpl.java")
+			puts "#{DELETE} #{@dao_impl_dir}#{className}DaoImpl.java"
+			File.delete("#{@service_dir}#{className}Service.java")
+			puts "#{DELETE} #{@service_dir}#{className}Service.java"
+			File.delete("#{@action_dir}#{className}Action.java")
+			puts "#{DELETE} #{@action_dir}#{className}Action.java"
+			File.delete("#{@action_method_dir}#{className}-struts.xml")
+			puts "#{DELETE} #{@action_method_dir}#{className}-struts.xml"
+			File.delete("#{@service_impl_dir}#{className}ServiceImpl.java")
+			puts "#{DELETE} #{@service_impl_dir}#{className}ServiceImpl.java"
+			File.delete("#{@jsp_base_dir}#{className}/#{className}List.jsp")
+			puts "#{DELETE} #{@jsp_base_dir}#{className}/#{className}List.jsp"
+			File.delete("#{@jsp_base_dir}#{className}/#{className}New.jsp")
+			puts "#{DELETE} #{@jsp_base_dir}#{className}/#{className}New.jsp"
+			File.delete("#{@jsp_base_dir}#{className}/#{className}.jsp")
+			puts "#{DELETE} #{@jsp_base_dir}#{className}/#{className}.jsp"
+			File.delete("#{@jsp_base_dir}#{className}/#{className}Edit.jsp")
+			puts "#{DELETE} #{@jsp_base_dir}#{className}/#{className}Edit.jsp"
+			Dir.delete("#{@jsp_base_dir}#{className}")
+			puts "#{DELETE} #{@jsp_base_dir}#{className}"
+		end
+	end
+  
+  end
 
 
 	def self.genaratorProject(projectName)
@@ -459,84 +519,7 @@ module Mssh
 			}	
 			puts "#{CREATE} #{project_file}"
 		end 
-
 	end
-
-    def self.getTableDefBean(dbh,table_name)
-       columns = []
-       ts = dbh.execute("desc " + table_name)
-       ts.each do |row| 
-            #TODO:row[1]字段类型转换
-            java_arrt_type = @@columns_to_attr_type["#{row[1].split('(').first}"]
-            arrName = row[0].gsub(/^.|_./){ |match| match.size>1?match[1].upcase : match.upcase }
-            columns.push([row[0],java_arrt_type,arrName])
-       end
-       #puts columns
-       return Table.new(table_name,columns)
-    end
-
-	def self.genaratorAll(className)		
-		begin
-			File.new("#{@model_dir}#{className}.hbm.xml")
-		rescue Exception => e
-			puts "找不到文件 #{@model_dir}#{className}.hbm.xml"
-			puts "请确认你输入的参数在下列中:"
-			Dir.glob("#{@model_dir}*.hbm.xml").each do | file |
-				puts file.split("/").last.split(".").first
-			end
-			return
-		end
-		genaratorModel(className)
-		genaratorDao(className)
-		genaratorDaoImpl(className)
-		genaratorService(className)	
-		genaratorServiceImpl(className)
-		genaratorAction(className)
-		genaratorDaoConfig(className)
-		genaratorServiceConfig(className)
-		genaratorActionConfig(className)
-		genaratorHibernateConfig(className)
-		genaratorStrutsConfig(className)
-		genaratorJspScaffold(className)
-	end
-
-	def self.removeAll(className)
-		begin
-			File.new("#{@model_dir}#{className}.java")
-		rescue Exception => e
-			puts "找不到文件 #{@model_dir}#{className}.java"
-			puts "请确认你输入的参数在下列中:"
-			Dir.glob("#{@model_dir}*.java").each do | file |
-				puts file.split("/").last.split(".").first
-			end
-			return
-		end
-		File.delete("#{@model_dir}#{className}.java")
-		puts "#{DELETE} #{@model_dir}#{className}.java"
-		File.delete("#{@dao_dir}#{className}Dao.java")
-		puts "#{DELETE} #{@dao_dir}#{className}Dao.java"
-		File.delete("#{@dao_impl_dir}#{className}DaoImpl.java")
-		puts "#{DELETE} #{@dao_impl_dir}#{className}DaoImpl.java"
-		File.delete("#{@service_dir}#{className}Service.java")
-		puts "#{DELETE} #{@service_dir}#{className}Service.java"
-		File.delete("#{@action_dir}#{className}Action.java")
-		puts "#{DELETE} #{@action_dir}#{className}Action.java"
-		File.delete("#{@action_method_dir}#{className}-struts.xml")
-		puts "#{DELETE} #{@action_method_dir}#{className}-struts.xml"
-		File.delete("#{@service_impl_dir}#{className}ServiceImpl.java")
-		puts "#{DELETE} #{@service_impl_dir}#{className}ServiceImpl.java"
-		File.delete("#{@jsp_base_dir}#{className}/#{className}List.jsp")
-		puts "#{DELETE} #{@jsp_base_dir}#{className}/#{className}List.jsp"
-		File.delete("#{@jsp_base_dir}#{className}/#{className}New.jsp")
-		puts "#{DELETE} #{@jsp_base_dir}#{className}/#{className}New.jsp"
-		File.delete("#{@jsp_base_dir}#{className}/#{className}.jsp")
-		puts "#{DELETE} #{@jsp_base_dir}#{className}/#{className}.jsp"
-		File.delete("#{@jsp_base_dir}#{className}/#{className}Edit.jsp")
-		puts "#{DELETE} #{@jsp_base_dir}#{className}/#{className}Edit.jsp"
-		Dir.delete("#{@jsp_base_dir}#{className}")
-		puts "#{DELETE} #{@jsp_base_dir}#{className}"
-	end
-  end
 
 end
 
