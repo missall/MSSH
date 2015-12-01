@@ -1,5 +1,6 @@
 # MSSH
-Mssh是一个基于maven、struts、spring、hibernate框架的脚手架生产工具。
+
+    Mssh是一个基于maven、struts、spring、hibernate框架的脚手架生产工具。
 
 ##用法
 1. 下载安装文件
@@ -9,7 +10,7 @@ Mssh是一个基于maven、struts、spring、hibernate框架的脚手架生产�
     OR
     
     `git clone https://github.com/missall/MSSH.git`
-    
+
 2. 解压安装文件
     
     `unzip master.zip`
@@ -36,7 +37,9 @@ Mssh是一个基于maven、struts、spring、hibernate框架的脚手架生产�
     
     `maven jetty:run`
 
-8. 使用浏览器访问 `http://localhost:8080/myproject`
+8. 浏览器访问 
+
+    `http://localhost:8080/myproject`
 
 ##引入的主要框架和类库
 * bootstrap.js_v3.3.5
