@@ -1,13 +1,13 @@
 # MSSH
 
-    Mssh是一个基于maven、struts、spring、hibernate框架的脚手架生产工具。
+    Mssh是一个基于maven2、struts2、spring3、hibernate3框架的脚手架代码生成工具。
 
 ##用法
 1. 下载安装文件
     
     `wget https://github.com/missall/MSSH/archive/master.zip`
     
-    OR
+    或
     
     `git clone https://github.com/missall/MSSH.git`
 

@@ -17,16 +17,12 @@
           org.hibernate.dialect.PostgreSQLDialect
         </prop>
         <!-- 根据模型类自动同步数据库表 -->
-        <prop key="hibernate.hbm2ddl.auto">update</prop>
+        <!--prop key="hibernate.hbm2ddl.auto">update</prop-->
         <!-- 以下开发期间为true -->
         <prop key="hibernate.show_sql">${hibernate.show_sql}</prop>
         <prop key="hibernate.use_sql_comments">true</prop>
         <prop key="hibernate.format_sql">true</prop>
         <!-- 以上开发期间为true -->
-        <!--解决weblogic抛出的ClassNotFoundException:org.hibernate.hql.ast.HqlToken异常 -->
-        <prop key="hibernate.query.factory_class">
-          org.hibernate.hql.classic.ClassicQueryTranslatorFactory
-        </prop>
       </props>
     </property>
   </bean>
